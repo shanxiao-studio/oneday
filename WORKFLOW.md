@@ -50,4 +50,5 @@ hooks:
 
 要求：
 0. 在当前分支完成代码修改，确保测试通过，可正常运行
-1. 提交 commit 并推送分支到 Github，同时创建待 Review 的 Pull Request，涉及到页面变动时在 PR 详情中包含可视化结果
+1. 提交 commit 并推送分支到 Github
+2. 创建待 Review 的 Pull Request，PR 标题包含 {{ issue.identifier }}，可在 PR 详情中包含可视化截图或视频
