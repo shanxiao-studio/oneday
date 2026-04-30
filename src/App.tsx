@@ -133,23 +133,6 @@ function App() {
 
         <section className="grid flex-1 gap-5 py-5 lg:grid-cols-[280px_1fr]">
           <aside className="space-y-4">
-            <form className="rounded-lg border bg-card p-3" onSubmit={addTodayTask}>
-              <label className="sr-only" htmlFor="new-task">
-                添加今日待办
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  id="new-task"
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  placeholder="添加今日待办"
-                />
-                <Button size="icon" aria-label="添加今日待办">
-                  <Plus className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </div>
-            </form>
-
             <nav className="rounded-lg border bg-card p-2" aria-label="任务视图">
               <ViewButton
                 active={view === "today"}
@@ -201,6 +184,22 @@ function App() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
+              <form className="border-b p-4 sm:p-6" onSubmit={addTodayTask}>
+                <label className="sr-only" htmlFor="new-task">
+                  添加今日待办
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    id="new-task"
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    placeholder="添加今日待办"
+                  />
+                  <Button size="icon" aria-label="添加今日待办">
+                    <Plus className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </div>
+              </form>
               {visibleTasks.length > 0 ? (
                 <ul className="divide-y">
                   {visibleTasks.map((task) => (
