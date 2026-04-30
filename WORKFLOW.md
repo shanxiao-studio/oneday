@@ -3,8 +3,10 @@ tracker:
   kind: linear
   api_key: $LINEAR_API_KEY
   project_slug: oneday-372ff07c565b
-  active_states: [Todo, In Progress]
-  terminal_states: [Done, Canceled, Duplicate]
+  todo_state: Todo
+  running_state: In Progress
+  review_state: In Review
+  closed_states: [Done, Canceled, Duplicate]
 
 workspace:
   root: ./workspace
