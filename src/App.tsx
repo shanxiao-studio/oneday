@@ -20,9 +20,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  createTask,
+  createTaggedTask,
+  filterTasksByTag,
+  getTaskTags,
   getTodayKey,
   parseStoredTasks,
+  parseTagInput,
   rolloverTasks,
   sortTasks,
   STORAGE_KEY,
@@ -52,7 +55,9 @@ function App() {
     rolloverTasks(parseStoredTasks(localStorage.getItem(STORAGE_KEY)), todayKey),
   );
   const [draft, setDraft] = useState("");
+  const [tagDraft, setTagDraft] = useState("");
   const [view, setView] = useState<View>("today");
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
@@ -70,8 +75,30 @@ function App() {
     () => sortTasks(tasks.filter((task) => task.status === "done")),
     [tasks],
   );
-  const visibleTasks =
+  const baseTasks =
     view === "today" ? todayTasks : view === "inbox" ? inboxTasks : doneTasks;
+  const availableTags = useMemo(() => getTaskTags(baseTasks), [baseTasks]);
+  const tagCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const task of baseTasks) {
+      for (const tag of task.tags) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+
+    return counts;
+  }, [baseTasks]);
+  const visibleTasks = useMemo(
+    () => filterTasksByTag(baseTasks, selectedTag),
+    [baseTasks, selectedTag],
+  );
+
+  useEffect(() => {
+    if (selectedTag && !availableTags.includes(selectedTag)) {
+      setSelectedTag(null);
+    }
+  }, [availableTags, selectedTag]);
 
   function addTodayTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -80,8 +107,15 @@ function App() {
       return;
     }
 
-    setTasks((current) => [createTask(title, todayKey), ...current]);
+    setTasks((current) => [
+      createTaggedTask(title, {
+        scheduledFor: todayKey,
+        tags: parseTagInput(tagDraft),
+      }),
+      ...current,
+    ]);
     setDraft("");
+    setTagDraft("");
     setView("today");
   }
 
@@ -175,30 +209,69 @@ function App() {
                 <div>
                   <CardTitle>{viewCopy[view].title}</CardTitle>
                   <CardDescription className="mt-2">
-                    {viewCopy[view].description}
+                    {selectedTag
+                      ? `按 #${selectedTag} 查看。`
+                      : viewCopy[view].description}
                   </CardDescription>
                 </div>
                 <span className="rounded-md bg-muted px-2.5 py-1 text-sm text-muted-foreground">
                   {visibleTasks.length}
                 </span>
               </div>
+              {availableTags.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <TagFilterButton
+                    active={selectedTag === null}
+                    count={baseTasks.length}
+                    label="全部"
+                    onClick={() => setSelectedTag(null)}
+                  />
+                  {availableTags.map((tag) => (
+                    <TagFilterButton
+                      key={tag}
+                      active={selectedTag === tag}
+                      count={tagCounts.get(tag) ?? 0}
+                      label={`#${tag}`}
+                      onClick={() => setSelectedTag(tag)}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </CardHeader>
             <CardContent className="p-0">
               <form className="border-b p-4 sm:p-6" onSubmit={addTodayTask}>
-                <label className="sr-only" htmlFor="new-task">
-                  添加今日待办
+                <label className="sr-only" htmlFor="new-task-title">
+                  待办标题
                 </label>
-                <div className="flex gap-2">
+                <label className="sr-only" htmlFor="new-task-tags">
+                  标签
+                </label>
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
-                    id="new-task"
+                    id="new-task-title"
+                    className="sm:flex-1"
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
                     placeholder="添加今日待办"
                   />
-                  <Button size="icon" aria-label="添加今日待办">
+                  <Input
+                    id="new-task-tags"
+                    className="sm:max-w-52"
+                    value={tagDraft}
+                    onChange={(event) => setTagDraft(event.target.value)}
+                    placeholder="标签，用逗号分隔"
+                  />
+                  <Button
+                    aria-label="添加今日待办"
+                    className="sm:shrink-0"
+                    size="icon"
+                  >
                     <Plus className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  可选标签，例如 工作，家务，复盘
+                </p>
               </form>
               {visibleTasks.length > 0 ? (
                 <ul className="divide-y">
@@ -251,6 +324,36 @@ function ViewButton({ active, count, icon, label, onClick }: ViewButtonProps) {
   );
 }
 
+type TagFilterButtonProps = {
+  active: boolean;
+  count: number;
+  label: string;
+  onClick: () => void;
+};
+
+function TagFilterButton({
+  active,
+  count,
+  label,
+  onClick,
+}: TagFilterButtonProps) {
+  return (
+    <button
+      aria-pressed={active}
+      className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm transition-colors ${
+        active
+          ? "border-primary bg-primary/10 text-primary"
+          : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      <span>{label}</span>
+      <span className="text-xs">{count}</span>
+    </button>
+  );
+}
+
 type TaskRowProps = {
   task: Task;
   onComplete: (taskId: string) => void;
@@ -282,6 +385,18 @@ function TaskRow({ task, onComplete, onDelete, onMoveToToday }: TaskRowProps) {
         >
           {task.title}
         </p>
+        {task.tags.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {task.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
         <p className="text-xs text-muted-foreground">
           归属日期 {task.scheduledFor}
         </p>
