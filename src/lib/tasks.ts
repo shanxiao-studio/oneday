@@ -99,7 +99,11 @@ export function filterTasksByTag(tasks: Task[], tag: string | null): Task[] {
     return tasks;
   }
 
-  return tasks.filter((task) => task.tags.includes(tag));
+  const lookupKey = getTagLookupKey(tag);
+
+  return tasks.filter((task) =>
+    task.tags.some((taskTag) => getTagLookupKey(taskTag) === lookupKey),
+  );
 }
 
 export function getTaskTags(tasks: Task[]): string[] {
@@ -181,6 +185,10 @@ function normalizeTags(tags: readonly string[]): string[] {
   }
 
   return normalizedTags;
+}
+
+function getTagLookupKey(value: string): string {
+  return normalizeTag(value).toLocaleLowerCase();
 }
 
 function normalizeTag(value: string): string {

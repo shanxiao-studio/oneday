@@ -80,15 +80,12 @@ function App() {
   const availableTags = useMemo(() => getTaskTags(baseTasks), [baseTasks]);
   const tagCounts = useMemo(() => {
     const counts = new Map<string, number>();
-
-    for (const task of baseTasks) {
-      for (const tag of task.tags) {
-        counts.set(tag, (counts.get(tag) ?? 0) + 1);
-      }
+    for (const tag of availableTags) {
+      counts.set(tag, filterTasksByTag(baseTasks, tag).length);
     }
 
     return counts;
-  }, [baseTasks]);
+  }, [availableTags, baseTasks]);
   const visibleTasks = useMemo(
     () => filterTasksByTag(baseTasks, selectedTag),
     [baseTasks, selectedTag],

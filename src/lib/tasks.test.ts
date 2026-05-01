@@ -100,12 +100,17 @@ describe("tasks", () => {
       task,
       { ...task, id: "task-2", title: "Buy groceries", tags: ["home"] },
       { ...task, id: "task-3", title: "Review notes", tags: ["work", "review"] },
+      { ...task, id: "task-4", title: "Review PR", tags: ["Review"] },
     ];
 
     expect(getTaskTags(taggedTasks)).toEqual(["home", "review", "work"]);
     expect(filterTasksByTag(taggedTasks, "work").map((item) => item.id)).toEqual([
       "task-1",
       "task-3",
+    ]);
+    expect(filterTasksByTag(taggedTasks, "review").map((item) => item.id)).toEqual([
+      "task-3",
+      "task-4",
     ]);
   });
 });
