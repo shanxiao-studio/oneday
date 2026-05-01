@@ -8,6 +8,7 @@ import {
   ListChecks,
   Plus,
   RotateCcw,
+  Tags,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  collectTags,
   createTask,
+  extractTagsFromTitle,
   getTodayKey,
   parseStoredTasks,
   rolloverTasks,
@@ -46,6 +49,34 @@ const viewCopy: Record<View, { title: string; description: string }> = {
   },
 };
 
+const TAG_COLORS = [
+  "bg-red-100 text-red-700",
+  "bg-orange-100 text-orange-700",
+  "bg-amber-100 text-amber-700",
+  "bg-yellow-100 text-yellow-700",
+  "bg-lime-100 text-lime-700",
+  "bg-green-100 text-green-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-teal-100 text-teal-700",
+  "bg-cyan-100 text-cyan-700",
+  "bg-sky-100 text-sky-700",
+  "bg-blue-100 text-blue-700",
+  "bg-indigo-100 text-indigo-700",
+  "bg-violet-100 text-violet-700",
+  "bg-purple-100 text-purple-700",
+  "bg-fuchsia-100 text-fuchsia-700",
+  "bg-pink-100 text-pink-700",
+  "bg-rose-100 text-rose-700",
+];
+
+function tagColor(tag: string): string {
+  let hash = 0;
+  for (let i = 0; i < tag.length; i++) {
+    hash = (hash * 31 + tag.charCodeAt(i)) | 0;
+  }
+  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
+}
+
 function App() {
   const todayKey = getTodayKey();
   const [tasks, setTasks] = useState<Task[]>(() =>
@@ -53,6 +84,7 @@ function App() {
   );
   const [draft, setDraft] = useState("");
   const [view, setView] = useState<View>("today");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
@@ -70,17 +102,36 @@ function App() {
     () => sortTasks(tasks.filter((task) => task.status === "done")),
     [tasks],
   );
-  const visibleTasks =
+
+  const allTags = useMemo(() => collectTags(tasks), [tasks]);
+  const activeTagCounts = useMemo(() => {
+    const currentTasks =
+      view === "today" ? todayTasks : view === "inbox" ? inboxTasks : doneTasks;
+    const counts: Record<string, number> = {};
+    for (const t of currentTasks) {
+      for (const tag of t.tags) {
+        counts[tag] = (counts[tag] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [view, todayTasks, inboxTasks, doneTasks]);
+
+  let visibleTasks =
     view === "today" ? todayTasks : view === "inbox" ? inboxTasks : doneTasks;
+
+  if (tagFilter) {
+    visibleTasks = visibleTasks.filter((t) => t.tags.includes(tagFilter));
+  }
 
   function addTodayTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const title = draft.trim();
-    if (!title) {
+    const raw = draft.trim();
+    if (!raw) {
       return;
     }
 
-    setTasks((current) => [createTask(title, todayKey), ...current]);
+    const { cleanTitle, tags } = extractTagsFromTitle(raw);
+    setTasks((current) => [createTask(cleanTitle, todayKey, tags), ...current]);
     setDraft("");
     setView("today");
   }
@@ -115,6 +166,11 @@ function App() {
     setTasks((current) => current.filter((task) => task.id !== taskId));
   }
 
+  function handleViewChange(newView: View) {
+    setView(newView);
+    setTagFilter(null);
+  }
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.16),_transparent_30%),linear-gradient(180deg,_hsl(var(--background)),_#ffffff_78%)]">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
@@ -139,23 +195,55 @@ function App() {
                 count={todayTasks.length}
                 icon={<ListChecks className="h-4 w-4" aria-hidden="true" />}
                 label="今日"
-                onClick={() => setView("today")}
+                onClick={() => handleViewChange("today")}
               />
               <ViewButton
                 active={view === "inbox"}
                 count={inboxTasks.length}
                 icon={<Inbox className="h-4 w-4" aria-hidden="true" />}
                 label="收件箱"
-                onClick={() => setView("inbox")}
+                onClick={() => handleViewChange("inbox")}
               />
               <ViewButton
                 active={view === "done"}
                 count={doneTasks.length}
                 icon={<Check className="h-4 w-4" aria-hidden="true" />}
                 label="已完成"
-                onClick={() => setView("done")}
+                onClick={() => handleViewChange("done")}
               />
             </nav>
+
+            {allTags.length > 0 && (
+              <div className="rounded-lg border bg-card p-3">
+                <div className="mb-2 flex items-center gap-2 px-1 text-xs font-medium text-muted-foreground">
+                  <Tags className="h-3.5 w-3.5" aria-hidden="true" />
+                  标签筛选
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {allTags.map((tag) => {
+                    const count = activeTagCounts[tag] ?? 0;
+                    if (count === 0) return null;
+                    return (
+                      <button
+                        key={tag}
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                          tagFilter === tag
+                            ? "ring-2 ring-primary ring-offset-1"
+                            : "hover:ring-2 hover:ring-muted-foreground/30 hover:ring-offset-1"
+                        } ${tagColor(tag)}`}
+                        onClick={() =>
+                          setTagFilter((prev) => (prev === tag ? null : tag))
+                        }
+                        type="button"
+                      >
+                        {tag}
+                        <span className="opacity-70">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="rounded-lg border bg-secondary/70 p-4 text-sm text-secondary-foreground">
               <div className="flex items-center gap-2 font-medium">
@@ -173,9 +261,22 @@ function App() {
             <CardHeader className="border-b">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle>{viewCopy[view].title}</CardTitle>
+                  <CardTitle>
+                    {tagFilter ? (
+                      <span className="flex items-center gap-2">
+                        <span>{viewCopy[view].title}</span>
+                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ring-border">
+                          # {tagFilter}
+                        </span>
+                      </span>
+                    ) : (
+                      viewCopy[view].title
+                    )}
+                  </CardTitle>
                   <CardDescription className="mt-2">
-                    {viewCopy[view].description}
+                    {tagFilter
+                      ? `筛选「#${tagFilter}」标签的结果`
+                      : viewCopy[view].description}
                   </CardDescription>
                 </div>
                 <span className="rounded-md bg-muted px-2.5 py-1 text-sm text-muted-foreground">
@@ -186,20 +287,39 @@ function App() {
             <CardContent className="p-0">
               <form className="border-b p-4 sm:p-6" onSubmit={addTodayTask}>
                 <label className="sr-only" htmlFor="new-task">
-                  添加今日待办
+                  添加待办（使用 #标签 添加标签）
                 </label>
                 <div className="flex gap-2">
                   <Input
                     id="new-task"
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
-                    placeholder="添加今日待办"
+                    placeholder="添加待办，使用 #标签"
                   />
-                  <Button size="icon" aria-label="添加今日待办">
+                  <Button size="icon" aria-label="添加待办">
                     <Plus className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </form>
+              {tagFilter && (
+                <div className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2 sm:px-6">
+                  <span className="text-xs text-muted-foreground">
+                    正在筛选标签：
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${tagColor(tagFilter)}`}
+                  >
+                    {tagFilter}
+                  </span>
+                  <button
+                    className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setTagFilter(null)}
+                    type="button"
+                  >
+                    清除筛选
+                  </button>
+                </div>
+              )}
               {visibleTasks.length > 0 ? (
                 <ul className="divide-y">
                   {visibleTasks.map((task) => (
@@ -213,7 +333,7 @@ function App() {
                   ))}
                 </ul>
               ) : (
-                <EmptyState view={view} />
+                <EmptyState view={view} tagFilter={tagFilter} />
               )}
             </CardContent>
           </Card>
@@ -282,9 +402,22 @@ function TaskRow({ task, onComplete, onDelete, onMoveToToday }: TaskRowProps) {
         >
           {task.title}
         </p>
-        <p className="text-xs text-muted-foreground">
-          归属日期 {task.scheduledFor}
-        </p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <p className="text-xs text-muted-foreground">
+            归属日期 {task.scheduledFor}
+          </p>
+          {task.tags.length > 0 && (
+            <span className="mx-1 text-xs text-muted-foreground/40">|</span>
+          )}
+          {task.tags.map((tag) => (
+            <span
+              key={tag}
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none ${tagColor(tag)}`}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
       </div>
       {task.status !== "today" ? (
         <Button
@@ -310,7 +443,28 @@ function TaskRow({ task, onComplete, onDelete, onMoveToToday }: TaskRowProps) {
   );
 }
 
-function EmptyState({ view }: { view: View }) {
+function EmptyState({
+  view,
+  tagFilter,
+}: {
+  view: View;
+  tagFilter: string | null;
+}) {
+  if (tagFilter) {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center px-6 text-center">
+        <div>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            <Tags className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <p className="mt-4 text-sm font-medium">
+            没有带「{tagFilter}」标签的待办。
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const copy =
     view === "today"
       ? "今天还没有待办。"

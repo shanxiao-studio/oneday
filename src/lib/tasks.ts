@@ -9,6 +9,7 @@ export type Task = {
   scheduledFor: string;
   createdAt: string;
   completedAt?: string;
+  tags: string[];
 };
 
 type StoredTask = Partial<Task>;
@@ -21,14 +22,60 @@ export function getTodayKey(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-export function createTask(title: string, scheduledFor = getTodayKey()): Task {
+/**
+ * Extract tags (words starting with #) from a title string.
+ * Returns the cleaned title and the extracted tag names.
+ */
+export function extractTagsFromTitle(raw: string): {
+  cleanTitle: string;
+  tags: string[];
+} {
+  const tags: string[] = [];
+  const cleanTitle = raw
+    .replace(/#([\u4e00-\u9fa5\w]+)/g, (_, tag) => {
+      tags.push(tag);
+      return "";
+    })
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // If everything was a tag, don't extract and keep original title
+  if (!cleanTitle) {
+    return { cleanTitle: raw.trim(), tags: [] };
+  }
+
+  return {
+    cleanTitle,
+    tags: [...new Set(tags)],
+  };
+}
+
+export function createTask(
+  title: string,
+  scheduledFor = getTodayKey(),
+  tags: string[] = [],
+): Task {
   return {
     id: createTaskId(),
     title,
     status: "today",
     scheduledFor,
+    tags,
     createdAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Collect all unique tags across a set of tasks.
+ */
+export function collectTags(tasks: Task[]): string[] {
+  const set = new Set<string>();
+  for (const t of tasks) {
+    for (const tag of t.tags) {
+      set.add(tag);
+    }
+  }
+  return [...set].sort();
 }
 
 export function parseStoredTasks(value: string | null): Task[] {
@@ -91,7 +138,10 @@ function isTask(value: unknown): value is Task {
     isTaskStatus(task.status) &&
     typeof task.scheduledFor === "string" &&
     typeof task.createdAt === "string" &&
-    (task.completedAt === undefined || typeof task.completedAt === "string")
+    (task.completedAt === undefined || typeof task.completedAt === "string") &&
+    (task.tags === undefined ||
+      (Array.isArray(task.tags) &&
+        task.tags.every((t: unknown) => typeof t === "string")))
   );
 }
 
