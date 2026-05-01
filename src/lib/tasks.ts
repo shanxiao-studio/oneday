@@ -5,6 +5,7 @@ export type TaskStatus = "today" | "inbox" | "done";
 export type Task = {
   id: string;
   title: string;
+  tags: string[];
   status: TaskStatus;
   scheduledFor: string;
   createdAt: string;
@@ -22,9 +23,22 @@ export function getTodayKey(date = new Date()) {
 }
 
 export function createTask(title: string, scheduledFor = getTodayKey()): Task {
+  return createTaggedTask(title, { scheduledFor });
+}
+
+export function createTaggedTask(
+  title: string,
+  options: {
+    scheduledFor?: string;
+    tags?: string[];
+  } = {},
+): Task {
+  const { scheduledFor = getTodayKey(), tags = [] } = options;
+
   return {
     id: createTaskId(),
     title,
+    tags: normalizeTags(tags),
     status: "today",
     scheduledFor,
     createdAt: new Date().toISOString(),
@@ -43,7 +57,11 @@ export function parseStoredTasks(value: string | null): Task[] {
       return [];
     }
 
-    return parsed.filter(isTask);
+    return parsed.flatMap((task) => {
+      const normalizedTask = parseStoredTask(task);
+
+      return normalizedTask ? [normalizedTask] : [];
+    });
   } catch {
     return [];
   }
@@ -72,6 +90,28 @@ export function sortTasks(tasks: Task[]): Task[] {
   });
 }
 
+export function parseTagInput(value: string): string[] {
+  return normalizeTags(value.split(/[,\n，]/));
+}
+
+export function filterTasksByTag(tasks: Task[], tag: string | null): Task[] {
+  if (!tag) {
+    return tasks;
+  }
+
+  const lookupKey = getTagLookupKey(tag);
+
+  return tasks.filter((task) =>
+    task.tags.some((taskTag) => getTagLookupKey(taskTag) === lookupKey),
+  );
+}
+
+export function getTaskTags(tasks: Task[]): string[] {
+  return normalizeTags(tasks.flatMap((task) => task.tags)).sort((first, second) =>
+    first.localeCompare(second, "zh-Hans-CN"),
+  );
+}
+
 function createTaskId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -80,10 +120,10 @@ function createTaskId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function isTask(value: unknown): value is Task {
+function parseStoredTask(value: unknown): Task | null {
   const task = value as StoredTask;
 
-  return (
+  if (
     isRecord(value) &&
     typeof task.id === "string" &&
     typeof task.title === "string" &&
@@ -91,8 +131,21 @@ function isTask(value: unknown): value is Task {
     isTaskStatus(task.status) &&
     typeof task.scheduledFor === "string" &&
     typeof task.createdAt === "string" &&
-    (task.completedAt === undefined || typeof task.completedAt === "string")
-  );
+    (task.completedAt === undefined || typeof task.completedAt === "string") &&
+    isTaskTags(task.tags)
+  ) {
+    return {
+      id: task.id,
+      title: task.title,
+      tags: normalizeTags(task.tags ?? []),
+      status: task.status,
+      scheduledFor: task.scheduledFor,
+      createdAt: task.createdAt,
+      completedAt: task.completedAt,
+    };
+  }
+
+  return null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -101,4 +154,43 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isTaskStatus(value: unknown): value is TaskStatus {
   return value === "today" || value === "inbox" || value === "done";
+}
+
+function isTaskTags(value: unknown): value is string[] | undefined {
+  return (
+    value === undefined ||
+    (Array.isArray(value) && value.every((tag) => typeof tag === "string"))
+  );
+}
+
+function normalizeTags(tags: readonly string[]): string[] {
+  const normalizedTags: string[] = [];
+  const seen = new Set<string>();
+
+  for (const rawTag of tags) {
+    const normalizedTag = normalizeTag(rawTag);
+
+    if (!normalizedTag) {
+      continue;
+    }
+
+    const lookupKey = normalizedTag.toLocaleLowerCase();
+
+    if (seen.has(lookupKey)) {
+      continue;
+    }
+
+    seen.add(lookupKey);
+    normalizedTags.push(normalizedTag);
+  }
+
+  return normalizedTags;
+}
+
+function getTagLookupKey(value: string): string {
+  return normalizeTag(value).toLocaleLowerCase();
+}
+
+function normalizeTag(value: string): string {
+  return value.trim().replace(/^#+/, "").replace(/\s+/g, " ");
 }
