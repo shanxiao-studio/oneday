@@ -153,7 +153,10 @@ function isTaskStatus(value: unknown): value is TaskStatus {
 }
 
 function isTaskTags(value: unknown): value is string[] | undefined {
-  return value === undefined || (Array.isArray(value) && value.every((tag) => typeof tag === "string"));
+  return (
+    value === undefined ||
+    (Array.isArray(value) && value.every((tag) => typeof tag === "string"))
+  );
 }
 
 function normalizeTags(tags: readonly string[]): string[] {
