@@ -21,7 +21,7 @@ npm run build
 
 ## PR Preview
 
-仓库通过 GitHub Pages 提供正式站点和 PR preview：
+当仓库具备 GitHub Pages 能力后，可通过以下方式提供正式站点和 PR preview：
 
 - `main` 分支推送会把 `dist/` 发布到 `gh-pages`
 - PR 打开、更新和重新打开时，会把预览发布到 `gh-pages/pr-preview/pr-<number>/`
