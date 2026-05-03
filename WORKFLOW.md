@@ -47,20 +47,10 @@ hooks:
     git fetch origin
     git status
 ---
-你正在处理 Linear issue：
-
-- ID: {{ issue.identifier }}
-- 标题: {{ issue.title }}
-- 状态: {{ issue.state }}
-- URL: {{ issue.url }}
-
-描述：
-{{ issue.description }}
-
-请在当前 GitHub repo 工作区完成任务。
+你正在处理 Linear issue：ID {{ issue.identifier }}，请在当前工作区完成任务。
 
 要求：
-0. 在当前分支完成代码修改，确保测试通过，可正常运行
-1. 提交 commit 并推送分支到 Github
-2. 创建待 Review 的 Pull Request，PR 标题需包含 {{ issue.identifier }}
-3. 必要时可在 PR 详情中使用 chrome-devtools 截图或录制视频以帮助用户审核
+0. 检查是否已有 PR 提交，按要求修改
+1. 在当前分支完成代码修改，确保测试通过，可正常运行
+2. 提交 commit 并推送分支到 Github
+3. 创建待 Review 的 Pull Request，PR 标题需包含 {{ issue.identifier }}
