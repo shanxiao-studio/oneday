@@ -21,10 +21,26 @@ describe("App", () => {
         store.set(key, value);
       },
     } satisfies Storage);
+
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockImplementation(() => ({
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        matches: false,
+        media: "(prefers-color-scheme: dark)",
+        onchange: null,
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
+      })),
+    );
+    document.documentElement.classList.remove("dark");
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    document.documentElement.classList.remove("dark");
   });
 
   it("adds tagged tasks and filters the current view by tag", async () => {
@@ -57,5 +73,21 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /全部/ }));
 
     expect(screen.queryByText("买菜")).toBeTruthy();
+  });
+
+  it("toggles dark theme and persists the choice", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "切换到暗色主题" }));
+
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(localStorage.getItem("oneday-theme")).toBe("dark");
+    expect(
+      screen.getByRole("button", { name: "切换到浅色主题" }),
+    ).toBeTruthy();
   });
 });

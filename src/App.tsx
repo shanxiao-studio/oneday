@@ -6,8 +6,10 @@ import {
   Circle,
   Inbox,
   ListChecks,
+  Moon,
   Plus,
   RotateCcw,
+  Sun,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,8 +33,12 @@ import {
   STORAGE_KEY,
   type Task,
 } from "@/lib/tasks";
+import { cn } from "@/lib/utils";
 
 type View = "today" | "inbox" | "done";
+type Theme = "light" | "dark";
+
+const THEME_STORAGE_KEY = "oneday-theme";
 
 const viewCopy: Record<View, { title: string; description: string }> = {
   today: {
@@ -49,11 +55,23 @@ const viewCopy: Record<View, { title: string; description: string }> = {
   },
 };
 
+function getStoredTheme(): Theme {
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  if (storedTheme === "light" || storedTheme === "dark") {
+    return storedTheme;
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
 function App() {
   const todayKey = getTodayKey();
   const [tasks, setTasks] = useState<Task[]>(() =>
     rolloverTasks(parseStoredTasks(localStorage.getItem(STORAGE_KEY)), todayKey),
   );
+  const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const [draft, setDraft] = useState("");
   const [tagDraft, setTagDraft] = useState("");
   const [view, setView] = useState<View>("today");
@@ -62,6 +80,11 @@ function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   const todayTasks = useMemo(
     () => sortTasks(tasks.filter((task) => task.status === "today")),
@@ -147,7 +170,7 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.16),_transparent_30%),linear-gradient(180deg,_hsl(var(--background)),_#ffffff_78%)]">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.18),_transparent_30%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--muted))_100%)] transition-colors">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
         <header className="flex flex-col gap-4 border-b border-border/80 pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -156,9 +179,28 @@ function App() {
               今天只做今天的事
             </h1>
           </div>
-          <div className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground">
-            <CalendarDays className="h-4 w-4 text-primary" aria-hidden="true" />
-            <span>{todayKey}</span>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <div className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground">
+              <CalendarDays className="size-4 text-primary" aria-hidden="true" />
+              <span>{todayKey}</span>
+            </div>
+            <Button
+              aria-label={theme === "dark" ? "切换到浅色主题" : "切换到暗色主题"}
+              onClick={() =>
+                setTheme((currentTheme) =>
+                  currentTheme === "dark" ? "light" : "dark",
+                )
+              }
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              {theme === "dark" ? (
+                <Sun className="size-4" aria-hidden="true" />
+              ) : (
+                <Moon className="size-4" aria-hidden="true" />
+              )}
+            </Button>
           </div>
         </header>
 
@@ -168,21 +210,21 @@ function App() {
               <ViewButton
                 active={view === "today"}
                 count={todayTasks.length}
-                icon={<ListChecks className="h-4 w-4" aria-hidden="true" />}
+                icon={<ListChecks className="size-4" aria-hidden="true" />}
                 label="今日"
                 onClick={() => setView("today")}
               />
               <ViewButton
                 active={view === "inbox"}
                 count={inboxTasks.length}
-                icon={<Inbox className="h-4 w-4" aria-hidden="true" />}
+                icon={<Inbox className="size-4" aria-hidden="true" />}
                 label="收件箱"
                 onClick={() => setView("inbox")}
               />
               <ViewButton
                 active={view === "done"}
                 count={doneTasks.length}
-                icon={<Check className="h-4 w-4" aria-hidden="true" />}
+                icon={<Check className="size-4" aria-hidden="true" />}
                 label="已完成"
                 onClick={() => setView("done")}
               />
@@ -190,7 +232,7 @@ function App() {
 
             <div className="rounded-lg border bg-secondary/70 p-4 text-sm text-secondary-foreground">
               <div className="flex items-center gap-2 font-medium">
-                <Archive className="h-4 w-4" aria-hidden="true" />
+                <Archive className="size-4" aria-hidden="true" />
                 日终
               </div>
               <p className="mt-2 text-2xl font-semibold">
@@ -263,7 +305,7 @@ function App() {
                     className="sm:shrink-0"
                     size="icon"
                   >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
+                    <Plus className="size-4" aria-hidden="true" />
                   </Button>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
@@ -304,11 +346,12 @@ type ViewButtonProps = {
 function ViewButton({ active, count, icon, label, onClick }: ViewButtonProps) {
   return (
     <button
-      className={`flex h-11 w-full items-center justify-between rounded-md px-3 text-sm font-medium transition-colors ${
+      className={cn(
+        "flex h-11 w-full items-center justify-between rounded-md px-3 text-sm font-medium transition-colors",
         active
           ? "bg-accent text-accent-foreground"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      }`}
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+      )}
       onClick={onClick}
       type="button"
     >
@@ -337,11 +380,12 @@ function TagFilterButton({
   return (
     <button
       aria-pressed={active}
-      className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm transition-colors ${
+      className={cn(
+        "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm transition-colors",
         active
           ? "border-primary bg-primary/10 text-primary"
-          : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
-      }`}
+          : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+      )}
       onClick={onClick}
       type="button"
     >
@@ -363,22 +407,23 @@ function TaskRow({ task, onComplete, onDelete, onMoveToToday }: TaskRowProps) {
     <li className="flex min-h-16 items-center gap-3 px-4 py-3 sm:px-6">
       <button
         aria-label={`完成 ${task.title}`}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:hover:border-border disabled:hover:text-muted-foreground"
+        className="flex size-9 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:hover:border-border disabled:hover:text-muted-foreground"
         disabled={task.status === "done"}
         onClick={() => onComplete(task.id)}
         type="button"
       >
         {task.status === "done" ? (
-          <Check className="h-4 w-4" aria-hidden="true" />
+          <Check className="size-4" aria-hidden="true" />
         ) : (
-          <Circle className="h-4 w-4" aria-hidden="true" />
+          <Circle className="size-4" aria-hidden="true" />
         )}
       </button>
       <div className="min-w-0 flex-1">
         <p
-          className={`break-words text-sm font-medium leading-6 ${
-            task.status === "done" ? "text-muted-foreground line-through" : ""
-          }`}
+          className={cn(
+            "break-words text-sm font-medium leading-6",
+            task.status === "done" && "text-muted-foreground line-through",
+          )}
         >
           {task.title}
         </p>
@@ -405,7 +450,7 @@ function TaskRow({ task, onComplete, onDelete, onMoveToToday }: TaskRowProps) {
           type="button"
           variant="outline"
         >
-          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+          <RotateCcw className="size-4" aria-hidden="true" />
           今天
         </Button>
       ) : null}
@@ -416,7 +461,7 @@ function TaskRow({ task, onComplete, onDelete, onMoveToToday }: TaskRowProps) {
         type="button"
         variant="ghost"
       >
-        <Trash2 className="h-4 w-4" aria-hidden="true" />
+        <Trash2 className="size-4" aria-hidden="true" />
       </Button>
     </li>
   );
@@ -433,8 +478,8 @@ function EmptyState({ view }: { view: View }) {
   return (
     <div className="flex min-h-[420px] items-center justify-center px-6 text-center">
       <div>
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          <Inbox className="h-5 w-5" aria-hidden="true" />
+        <div className="mx-auto flex size-12 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <Inbox className="size-5" aria-hidden="true" />
         </div>
         <p className="mt-4 text-sm font-medium">{copy}</p>
       </div>
