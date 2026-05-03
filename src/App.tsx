@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Check,
   Circle,
+  Clock3,
   Inbox,
   Tags,
   ListChecks,
@@ -76,6 +77,7 @@ function App() {
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const [draft, setDraft] = useState("");
   const [detailDraft, setDetailDraft] = useState("");
+  const [timeDraft, setTimeDraft] = useState("");
   const [view, setView] = useState<View>("today");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
@@ -133,11 +135,13 @@ function App() {
       createTaggedTask(draft, {
         details: detailDraft,
         scheduledFor: todayKey,
+        scheduledTime: timeDraft,
       }),
       ...current,
     ]);
     setDraft("");
     setDetailDraft("");
+    setTimeDraft("");
     setView("today");
   }
 
@@ -159,6 +163,7 @@ function App() {
               ...task,
               status: "today",
               scheduledFor: todayKey,
+              scheduledTime: undefined,
               completedAt: undefined,
             }
           : task,
@@ -282,6 +287,22 @@ function App() {
                       onChange={(event) => setDraft(event.target.value)}
                       placeholder="添加今日待办，用 #标签 标记分类"
                     />
+                    <div className="flex items-center gap-2 rounded-md border bg-background px-3">
+                      <label className="sr-only" htmlFor="new-task-time">
+                        当天时间
+                      </label>
+                      <Clock3
+                        className="size-4 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                      <Input
+                        id="new-task-time"
+                        className="w-[7.5rem] border-0 px-0 shadow-none focus-visible:ring-0"
+                        type="time"
+                        value={timeDraft}
+                        onChange={(event) => setTimeDraft(event.target.value)}
+                      />
+                    </div>
                     <Button
                       aria-label="添加今日待办"
                       className="sm:shrink-0"
@@ -303,7 +324,7 @@ function App() {
                   </div>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  直接在文本里写 #工作、#复盘 这样的标签即可
+                  直接在文本里写 #工作、#复盘 这样的标签即可，时间仅支持设置当天时分
                 </p>
               </form>
               {visibleTasks.length > 0 ? (
@@ -489,9 +510,15 @@ function TaskRow({ task, onComplete, onDelete, onMoveToToday }: TaskRowProps) {
             ))}
           </div>
         ) : null}
-        <p className="text-xs text-muted-foreground">
-          归属日期 {task.scheduledFor}
-        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span>归属日期 {task.scheduledFor}</span>
+          {task.scheduledTime ? (
+            <span className="inline-flex items-center gap-1">
+              <Clock3 className="size-3.5" aria-hidden="true" />
+              {task.scheduledTime}
+            </span>
+          ) : null}
+        </div>
       </div>
       {task.status !== "today" ? (
         <Button
