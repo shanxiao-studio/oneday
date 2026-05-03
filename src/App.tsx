@@ -45,15 +45,15 @@ const THEME_STORAGE_KEY = "oneday-theme";
 const viewCopy: Record<View, { title: string; description: string }> = {
   today: {
     title: "今日",
-    description: "把今天真正要推进的事情排成一条清晰的工作流。",
+    description: "排好今天的顺序。",
   },
   inbox: {
     title: "收件箱",
-    description: "昨天留下来的事项先集中落位，再决定是否回到今天。",
+    description: "先收着，再决定。",
   },
   done: {
     title: "已完成",
-    description: "回看今天已经收尾的任务，确认节奏和产出。",
+    description: "回看已经完成的事。",
   },
 };
 
@@ -230,11 +230,10 @@ function App() {
               oneday
             </p>
             <h1 className="font-display mt-3 text-4xl leading-none sm:text-5xl lg:text-[4.5rem]">
-              今天只做今天的事
+              明日复明日，明日何其多
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              一个只服务于当日执行的任务工作台。今天、收件箱与已完成放在同一张桌面上，
-              让你在切换之前先看清优先级和节奏。
+              今天、收件箱、已完成，同桌切换。
             </p>
           </div>
 
@@ -288,7 +287,7 @@ function App() {
                   count={todayTasks.length}
                   icon={<ListChecks className="size-4" aria-hidden="true" />}
                   label="今日"
-                  note="聚焦正在推进的事"
+                  note="正在推进"
                   onClick={() => setView("today")}
                 />
                 <ViewButton
@@ -296,7 +295,7 @@ function App() {
                   count={inboxTasks.length}
                   icon={<Inbox className="size-4" aria-hidden="true" />}
                   label="收件箱"
-                  note="重排昨天留下的事"
+                  note="暂存待排"
                   onClick={() => setView("inbox")}
                 />
                 <ViewButton
@@ -304,7 +303,7 @@ function App() {
                   count={doneTasks.length}
                   icon={<Check className="size-4" aria-hidden="true" />}
                   label="已完成"
-                  note="回看今天已经收尾的事"
+                  note="已经收尾"
                   onClick={() => setView("done")}
                 />
               </nav>
@@ -320,21 +319,21 @@ function App() {
                   {todayTasks.length}
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  今天还有 {todayTasks.length} 项待完成，当前总完成率 {completionRate}%。
+                  {todayTasks.length} 项未完成，完成率 {completionRate}%。
                 </p>
               </div>
               <div className="grid gap-3 px-5 py-4 text-sm text-muted-foreground">
                 <div className="rounded-[1.25rem] bg-background/75 px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.22em]">Next focus</p>
                   <p className="mt-2 font-medium text-foreground">
-                    {nextFocusTask ? "今天已经有焦点任务" : "先把第一件事写下来"}
+                    {nextFocusTask ? "已有焦点任务" : "先写下第一件事"}
                   </p>
                   <p className="mt-1 text-xs">
                     {nextFocusTask
                       ? nextFocusTask.scheduledTime
                         ? `${nextFocusTask.scheduledTime} 开始`
-                        : "还没有设定具体时间"
-                      : "留白也没关系，先把任务记进来"}
+                        : "未设时间"
+                      : "从这里开始"}
                   </p>
                 </div>
                 <div className="rounded-[1.25rem] bg-background/75 px-4 py-3">
@@ -342,9 +341,7 @@ function App() {
                   <p className="mt-2 font-medium text-foreground">
                     当前总计 {totalTasks} 项任务
                   </p>
-                  <p className="mt-1 text-xs">
-                    只把真正要处理的事留在今天，其他都先放进收件箱。
-                  </p>
+                  <p className="mt-1 text-xs">今天只留要做的。</p>
                 </div>
               </div>
             </section>
@@ -370,13 +367,13 @@ function App() {
                   </h2>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">
                     {selectedTag
-                      ? `当前按 #${selectedTag} 筛选，只保留与这组上下文相关的任务。`
+                      ? `#${selectedTag} 相关任务`
                       : viewCopy[view].description}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 self-start rounded-full border border-border/70 bg-background/70 px-4 py-2 text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{visibleTasks.length}</span>
-                  <span>项可见任务</span>
+                  <span>项</span>
                 </div>
               </div>
             </div>
@@ -439,7 +436,7 @@ function App() {
                 </div>
               </div>
               <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                直接在文本里写 #工作、#复盘 这样的标签即可，也可以补充详情、设定优先级和当天时间
+                标题里写 #标签，可补时间和备注。
               </p>
             </form>
 
@@ -786,7 +783,7 @@ function TaskRow({
                 </div>
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                标题中保留或修改 #标签 即可更新标签
+                #标签会跟随标题保存
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
