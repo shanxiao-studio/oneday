@@ -60,6 +60,7 @@ describe("App", () => {
     await user.type(screen.getByLabelText("标签"), "review");
     await user.click(screen.getByRole("button", { name: "添加今日待办" }));
 
+    expect(screen.getByRole("region", { name: "标签筛选" })).toBeTruthy();
     expect(screen.queryByText("写周报")).toBeTruthy();
     expect(screen.queryByText("买菜")).toBeTruthy();
     expect(screen.queryByText("过 PR")).toBeTruthy();

@@ -5,6 +5,7 @@ import {
   Check,
   Circle,
   Inbox,
+  Tags,
   ListChecks,
   Moon,
   Plus,
@@ -240,6 +241,14 @@ function App() {
                 <span className="ml-2 text-sm font-medium">项待完成</span>
               </p>
             </div>
+
+            <TagSidebarSection
+              availableTags={availableTags}
+              baseTaskCount={baseTasks.length}
+              selectedTag={selectedTag}
+              tagCounts={tagCounts}
+              onSelectTag={setSelectedTag}
+            />
           </aside>
 
           <Card className="min-h-[560px] shadow-none">
@@ -257,25 +266,6 @@ function App() {
                   {visibleTasks.length}
                 </span>
               </div>
-              {availableTags.length > 0 ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <TagFilterButton
-                    active={selectedTag === null}
-                    count={baseTasks.length}
-                    label="全部"
-                    onClick={() => setSelectedTag(null)}
-                  />
-                  {availableTags.map((tag) => (
-                    <TagFilterButton
-                      key={tag}
-                      active={selectedTag === tag}
-                      count={tagCounts.get(tag) ?? 0}
-                      label={`#${tag}`}
-                      onClick={() => setSelectedTag(tag)}
-                    />
-                  ))}
-                </div>
-              ) : null}
             </CardHeader>
             <CardContent className="p-0">
               <form className="border-b p-4 sm:p-6" onSubmit={addTodayTask}>
@@ -332,6 +322,57 @@ function App() {
         </section>
       </div>
     </main>
+  );
+}
+
+type TagSidebarSectionProps = {
+  availableTags: string[];
+  baseTaskCount: number;
+  selectedTag: string | null;
+  tagCounts: Map<string, number>;
+  onSelectTag: (tag: string | null) => void;
+};
+
+function TagSidebarSection({
+  availableTags,
+  baseTaskCount,
+  selectedTag,
+  tagCounts,
+  onSelectTag,
+}: TagSidebarSectionProps) {
+  return (
+    <section
+      className="rounded-lg border bg-card p-4"
+      aria-label="标签筛选"
+    >
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Tags className="size-4 text-primary" aria-hidden="true" />
+        标签
+      </div>
+      {availableTags.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <TagFilterButton
+            active={selectedTag === null}
+            count={baseTaskCount}
+            label="全部"
+            onClick={() => onSelectTag(null)}
+          />
+          {availableTags.map((tag) => (
+            <TagFilterButton
+              key={tag}
+              active={selectedTag === tag}
+              count={tagCounts.get(tag) ?? 0}
+              label={`#${tag}`}
+              onClick={() => onSelectTag(tag)}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">
+          当前视图还没有标签。
+        </p>
+      )}
+    </section>
   );
 }
 
