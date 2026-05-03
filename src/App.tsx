@@ -10,10 +10,13 @@ import {
   Tags,
   ListChecks,
   Moon,
+  PencilLine,
   Plus,
   RotateCcw,
+  Save,
   Sun,
   Trash2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +40,7 @@ import {
   STORAGE_KEY,
   type TaskPriority,
   type Task,
+  updateTask as updateStoredTask,
 } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
 
@@ -191,6 +195,23 @@ function App() {
 
   function deleteTask(taskId: string) {
     setTasks((current) => current.filter((task) => task.id !== taskId));
+  }
+
+  function saveTaskEdits(
+    taskId: string,
+    updates: {
+      title: string;
+      details: string;
+      priority: TaskPriority;
+      scheduledFor: string;
+      scheduledTime: string;
+    },
+  ) {
+    setTasks((current) =>
+      current.map((task) =>
+        task.id === taskId ? updateStoredTask(task, updates) : task,
+      ),
+    );
   }
 
   function updateTaskPriority(taskId: string, priority: TaskPriority) {
@@ -366,6 +387,7 @@ function App() {
                       onChangePriority={updateTaskPriority}
                       onDelete={deleteTask}
                       onMoveToToday={moveToToday}
+                      onSave={saveTaskEdits}
                     />
                   ))}
                 </ul>
@@ -494,7 +516,21 @@ type TaskRowProps = {
   onChangePriority: (taskId: string, priority: TaskPriority) => void;
   onDelete: (taskId: string) => void;
   onMoveToToday: (taskId: string) => void;
+  onSave: (
+    taskId: string,
+    updates: {
+      title: string;
+      details: string;
+      priority: TaskPriority;
+      scheduledFor: string;
+      scheduledTime: string;
+    },
+  ) => void;
 };
+
+function formatTaskTitleDraft(task: Task): string {
+  return [task.title, ...task.tags.map((tag) => `#${tag}`)].join(" ").trim();
+}
 
 function TaskRow({
   task,
@@ -502,13 +538,67 @@ function TaskRow({
   onChangePriority,
   onDelete,
   onMoveToToday,
+  onSave,
 }: TaskRowProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(() => formatTaskTitleDraft(task));
+  const [detailsDraft, setDetailsDraft] = useState(task.details ?? "");
+  const [priorityDraft, setPriorityDraft] = useState(task.priority);
+  const [scheduledForDraft, setScheduledForDraft] = useState(task.scheduledFor);
+  const [scheduledTimeDraft, setScheduledTimeDraft] = useState(
+    task.scheduledTime ?? "",
+  );
+  const parsedTitleDraft = parseTaskDraft(titleDraft);
+
+  function syncDraftsFromTask() {
+    setTitleDraft(formatTaskTitleDraft(task));
+    setDetailsDraft(task.details ?? "");
+    setPriorityDraft(task.priority);
+    setScheduledForDraft(task.scheduledFor);
+    setScheduledTimeDraft(task.scheduledTime ?? "");
+  }
+
+  useEffect(() => {
+    if (isEditing) {
+      return;
+    }
+
+    syncDraftsFromTask();
+  }, [isEditing, task]);
+
+  function startEditing() {
+    syncDraftsFromTask();
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    syncDraftsFromTask();
+    setIsEditing(false);
+  }
+
+  function submitEdits(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!parsedTitleDraft.title) {
+      return;
+    }
+
+    onSave(task.id, {
+      title: titleDraft,
+      details: detailsDraft,
+      priority: priorityDraft,
+      scheduledFor: scheduledForDraft,
+      scheduledTime: scheduledTimeDraft,
+    });
+    setIsEditing(false);
+  }
+
   return (
-    <li className="flex min-h-16 items-center gap-3 px-4 py-3 sm:px-6">
+    <li className="flex min-h-16 items-start gap-3 px-4 py-3 sm:px-6">
       <button
         aria-label={`完成 ${task.title}`}
         className="flex size-9 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:hover:border-border disabled:hover:text-muted-foreground"
-        disabled={task.status === "done"}
+        disabled={task.status === "done" || isEditing}
         onClick={() => onComplete(task.id)}
         type="button"
       >
@@ -519,49 +609,139 @@ function TaskRow({
         )}
       </button>
       <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            "break-words text-sm font-medium leading-6",
-            task.status === "done" && "text-muted-foreground line-through",
-          )}
-        >
-          {task.title}
-        </p>
-        {task.details ? (
-          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">
-            {task.details}
-          </p>
-        ) : null}
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <PriorityBadge priority={task.priority} />
-          {task.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground"
+        {isEditing ? (
+          <form className="space-y-3" onSubmit={submitEdits}>
+            <div className="space-y-2">
+              <label className="sr-only" htmlFor={`task-title-${task.id}`}>
+                待办标题
+              </label>
+              <Input
+                id={`task-title-${task.id}`}
+                value={titleDraft}
+                onChange={(event) => setTitleDraft(event.target.value)}
+                placeholder="标题里直接写 #标签"
+              />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+              <PrioritySelect
+                ariaLabel="优先级"
+                className="sm:w-40"
+                onChange={setPriorityDraft}
+                value={priorityDraft}
+              />
+              <div className="flex items-center gap-2 rounded-md border bg-background px-3">
+                <label className="sr-only" htmlFor={`task-time-${task.id}`}>
+                  当天时间
+                </label>
+                <Clock3
+                  className="size-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  id={`task-time-${task.id}`}
+                  className="w-[7.5rem] border-0 px-0 shadow-none focus-visible:ring-0"
+                  type="time"
+                  value={scheduledTimeDraft}
+                  onChange={(event) => setScheduledTimeDraft(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2 sm:flex-1">
+                <label
+                  className="sr-only"
+                  htmlFor={`task-scheduled-for-${task.id}`}
+                >
+                  归属日期
+                </label>
+                <Input
+                  id={`task-scheduled-for-${task.id}`}
+                  type="date"
+                  value={scheduledForDraft}
+                  onChange={(event) => setScheduledForDraft(event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="sr-only" htmlFor={`task-details-${task.id}`}>
+                待办详情
+              </label>
+              <Textarea
+                id={`task-details-${task.id}`}
+                className="min-h-20"
+                value={detailsDraft}
+                onChange={(event) => setDetailsDraft(event.target.value)}
+                placeholder="补充备注、背景或验收标准（可选）"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              标题中保留或修改 #标签 即可更新标签
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={!parsedTitleDraft.title}
+                size="sm"
+                type="submit"
+              >
+                <Save className="size-4" aria-hidden="true" />
+                保存
+              </Button>
+              <Button
+                onClick={cancelEditing}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <X className="size-4" aria-hidden="true" />
+                取消
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <p
+              className={cn(
+                "break-words text-sm font-medium leading-6",
+                task.status === "done" && "text-muted-foreground line-through",
+              )}
             >
-              #{tag}
-            </span>
-          ))}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <PrioritySelect
-            ariaLabel={`设置 ${task.title} 的优先级`}
-            className="w-32"
-            onChange={(priority) => onChangePriority(task.id, priority)}
-            value={task.priority}
-          />
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span>归属日期 {task.scheduledFor}</span>
-            {task.scheduledTime ? (
-              <span className="inline-flex items-center gap-1">
-                <Clock3 className="size-3.5" aria-hidden="true" />
-                {task.scheduledTime}
-              </span>
+              {task.title}
+            </p>
+            {task.details ? (
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">
+                {task.details}
+              </p>
             ) : null}
-          </div>
-        </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <PriorityBadge priority={task.priority} />
+              {task.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <PrioritySelect
+                ariaLabel={`设置 ${task.title} 的优先级`}
+                className="w-32"
+                onChange={(priority) => onChangePriority(task.id, priority)}
+                value={task.priority}
+              />
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span>归属日期 {task.scheduledFor}</span>
+                {task.scheduledTime ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Clock3 className="size-3.5" aria-hidden="true" />
+                    {task.scheduledTime}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </>
+        )}
       </div>
-      {task.status !== "today" ? (
+      {!isEditing && task.status !== "today" ? (
         <Button
           onClick={() => onMoveToToday(task.id)}
           size="sm"
@@ -572,15 +752,28 @@ function TaskRow({
           今天
         </Button>
       ) : null}
-      <Button
-        aria-label={`删除 ${task.title}`}
-        onClick={() => onDelete(task.id)}
-        size="icon"
-        type="button"
-        variant="ghost"
-      >
-        <Trash2 className="size-4" aria-hidden="true" />
-      </Button>
+      {!isEditing ? (
+        <>
+          <Button
+            aria-label={`编辑 ${task.title}`}
+            onClick={startEditing}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <PencilLine className="size-4" aria-hidden="true" />
+          </Button>
+          <Button
+            aria-label={`删除 ${task.title}`}
+            onClick={() => onDelete(task.id)}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <Trash2 className="size-4" aria-hidden="true" />
+          </Button>
+        </>
+      ) : null}
     </li>
   );
 }

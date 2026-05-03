@@ -16,6 +16,14 @@ export type Task = {
   completedAt?: string;
 };
 
+export type TaskUpdate = {
+  title: string;
+  details?: string;
+  priority?: TaskPriority;
+  scheduledFor?: string;
+  scheduledTime?: string;
+};
+
 type StoredTask = Partial<Task>;
 type ParsedTaskDraft = {
   title: string;
@@ -65,6 +73,29 @@ export function createTaggedTask(
     scheduledFor,
     scheduledTime: normalizedScheduledTime,
     createdAt: new Date().toISOString(),
+  };
+}
+
+export function updateTask(task: Task, updates: TaskUpdate): Task {
+  const parsedDraft = parseTaskDraft(updates.title);
+
+  return {
+    ...task,
+    title: parsedDraft.title,
+    details:
+      updates.details === undefined
+        ? task.details
+        : normalizeTaskDetails(updates.details),
+    tags: parsedDraft.tags,
+    priority:
+      updates.priority === undefined
+        ? task.priority
+        : normalizeTaskPriority(updates.priority),
+    scheduledFor: normalizeScheduledFor(updates.scheduledFor, task.scheduledFor),
+    scheduledTime:
+      updates.scheduledTime === undefined
+        ? task.scheduledTime
+        : normalizeScheduledTime(updates.scheduledTime),
   };
 }
 
@@ -314,6 +345,19 @@ function normalizeDraftTitle(value: string): string {
 
 function normalizeTag(value: string): string {
   return value.trim().replace(/^#+/, "").replace(/\s+/g, " ");
+}
+
+function normalizeScheduledFor(
+  value: string | undefined,
+  fallback: string,
+): string {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const normalizedValue = value.trim();
+
+  return normalizedValue.length > 0 ? normalizedValue : fallback;
 }
 
 function normalizeTaskDetails(value: string | undefined): string | undefined {

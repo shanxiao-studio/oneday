@@ -8,6 +8,7 @@ import {
   parseStoredTasks,
   rolloverTasks,
   sortTasks,
+  updateTask,
   type TaskPriority,
   type Task,
 } from "./tasks";
@@ -207,6 +208,26 @@ describe("tasks", () => {
       tags: ["Review", "work"],
       scheduledFor: "2026-04-29",
       scheduledTime: "14:05",
+    });
+  });
+
+  it("updates task fields with the same normalization rules as task creation", () => {
+    expect(
+      updateTask(task, {
+        title: "整理发布说明 #Review #发布",
+        details: "第一行\r\n第二行  ",
+        priority: "high",
+        scheduledFor: " 2026-05-01 ",
+        scheduledTime: " 09:45 ",
+      }),
+    ).toEqual({
+      ...task,
+      title: "整理发布说明",
+      details: "第一行\n第二行",
+      tags: ["Review", "发布"],
+      priority: "high",
+      scheduledFor: "2026-05-01",
+      scheduledTime: "09:45",
     });
   });
 
