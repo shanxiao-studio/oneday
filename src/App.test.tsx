@@ -93,6 +93,30 @@ describe("App", () => {
     expect(screen.getByText("14:30")).toBeTruthy();
   });
 
+  it("supports setting and updating task priority", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.type(screen.getByLabelText("待办标题"), "高优先级任务");
+    await user.selectOptions(screen.getByLabelText("优先级"), "high");
+    await user.click(screen.getByRole("button", { name: "添加今日待办" }));
+
+    await user.type(screen.getByLabelText("待办标题"), "低优先级任务");
+    await user.selectOptions(screen.getByLabelText("优先级"), "low");
+    await user.click(screen.getByRole("button", { name: "添加今日待办" }));
+
+    const taskItems = screen.getAllByRole("listitem");
+    expect(taskItems[0].textContent).toContain("高优先级任务");
+    expect(taskItems[1].textContent).toContain("低优先级任务");
+
+    const lowPrioritySelect = screen.getByLabelText("设置 低优先级任务 的优先级");
+    await user.selectOptions(lowPrioritySelect, "medium");
+
+    expect(lowPrioritySelect).toHaveProperty("value", "medium");
+    expect(screen.getAllByText("中优先级").length).toBeGreaterThan(0);
+  });
+
   it("toggles dark theme and persists the choice", async () => {
     const user = userEvent.setup();
 

@@ -1,12 +1,14 @@
 export const STORAGE_KEY = "oneday.tasks";
 
 export type TaskStatus = "today" | "inbox" | "done";
+export type TaskPriority = "high" | "medium" | "low";
 
 export type Task = {
   id: string;
   title: string;
   details?: string;
   tags: string[];
+  priority: TaskPriority;
   status: TaskStatus;
   scheduledFor: string;
   scheduledTime?: string;
@@ -36,6 +38,7 @@ export function createTaggedTask(
   title: string,
   options: {
     details?: string;
+    priority?: TaskPriority;
     scheduledFor?: string;
     scheduledTime?: string;
     tags?: string[];
@@ -43,6 +46,7 @@ export function createTaggedTask(
 ): Task {
   const {
     details,
+    priority = "medium",
     scheduledFor = getTodayKey(),
     scheduledTime,
     tags = [],
@@ -56,6 +60,7 @@ export function createTaggedTask(
     title: parsedDraft.title,
     details: normalizedDetails,
     tags: normalizeTags([...parsedDraft.tags, ...tags]),
+    priority,
     status: "today",
     scheduledFor,
     scheduledTime: normalizedScheduledTime,
@@ -102,14 +107,28 @@ export function rolloverTasks(tasks: Task[], todayKey = getTodayKey()): Task[] {
 
 export function sortTasks(tasks: Task[]): Task[] {
   return [...tasks].sort((first, second) => {
+    if (first.status === "done" && second.status === "done") {
+      const firstTime = Date.parse(first.completedAt ?? first.createdAt);
+      const secondTime = Date.parse(second.completedAt ?? second.createdAt);
+
+      return secondTime - firstTime;
+    }
+
     const scheduledTimeCompare = compareScheduledTime(first, second);
 
     if (scheduledTimeCompare !== 0) {
       return scheduledTimeCompare;
     }
 
-    const firstTime = Date.parse(first.completedAt ?? first.createdAt);
-    const secondTime = Date.parse(second.completedAt ?? second.createdAt);
+    const priorityDelta =
+      getPriorityOrder(first.priority) - getPriorityOrder(second.priority);
+
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+
+    const firstTime = Date.parse(first.createdAt);
+    const secondTime = Date.parse(second.createdAt);
 
     return secondTime - firstTime;
   });
@@ -189,6 +208,7 @@ function parseStoredTask(value: unknown): Task | null {
       title: task.title,
       details: normalizeTaskDetails(task.details),
       tags: normalizeTags(task.tags ?? []),
+      priority: normalizeTaskPriority(task.priority),
       status: task.status,
       scheduledFor: task.scheduledFor,
       scheduledTime: normalizeScheduledTime(task.scheduledTime),
@@ -208,11 +228,30 @@ function isTaskStatus(value: unknown): value is TaskStatus {
   return value === "today" || value === "inbox" || value === "done";
 }
 
+function isTaskPriority(value: unknown): value is TaskPriority {
+  return value === "high" || value === "medium" || value === "low";
+}
+
+function normalizeTaskPriority(value: unknown): TaskPriority {
+  return isTaskPriority(value) ? value : "medium";
+}
+
 function isTaskTags(value: unknown): value is string[] | undefined {
   return (
     value === undefined ||
     (Array.isArray(value) && value.every((tag) => typeof tag === "string"))
   );
+}
+
+function getPriorityOrder(priority: TaskPriority): number {
+  switch (priority) {
+    case "high":
+      return 0;
+    case "medium":
+      return 1;
+    case "low":
+      return 2;
+  }
 }
 
 function normalizeTags(tags: readonly string[]): string[] {
