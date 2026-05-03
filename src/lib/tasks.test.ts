@@ -64,6 +64,7 @@ describe("tasks", () => {
           {
             ...task,
             details: "第一行\r\n第二行  ",
+            scheduledTime: "09:30",
           },
         ]),
       ),
@@ -71,12 +72,22 @@ describe("tasks", () => {
       {
         ...task,
         details: "第一行\n第二行",
+        scheduledTime: "09:30",
       },
     ]);
   });
 
-  it("moves unfinished tasks from previous days to the inbox", () => {
+  it("moves unfinished tasks from previous days to the inbox and clears stale time", () => {
     expect(rolloverTasks([task], "2026-04-30")).toEqual([
+      {
+        ...task,
+        status: "inbox",
+      },
+    ]);
+
+    expect(
+      rolloverTasks([{ ...task, scheduledTime: "08:30" }], "2026-04-30"),
+    ).toEqual([
       {
         ...task,
         status: "inbox",
@@ -84,7 +95,19 @@ describe("tasks", () => {
     ]);
   });
 
-  it("keeps the newest tasks first", () => {
+  it("sorts timed today tasks before untimed tasks", () => {
+    const untimed = { ...task, id: "untimed" };
+    const later = { ...task, id: "later", scheduledTime: "11:30" };
+    const earlier = { ...task, id: "earlier", scheduledTime: "09:15" };
+
+    expect(sortTasks([untimed, later, earlier]).map((item) => item.id)).toEqual([
+      "earlier",
+      "later",
+      "untimed",
+    ]);
+  });
+
+  it("keeps the newest untimed tasks first", () => {
     const older = { ...task, id: "older", createdAt: "2026-04-29T08:00:00.000Z" };
     const newer = { ...task, id: "newer", createdAt: "2026-04-30T08:00:00.000Z" };
 
@@ -111,6 +134,7 @@ describe("tasks", () => {
       createTaggedTask("Prepare notes #Review", {
         details: "\nContext line 1\r\nContext line 2\n",
         scheduledFor: "2026-04-29",
+        scheduledTime: "14:05",
         tags: ["work", " Work ", "#review"],
       }),
     ).toMatchObject({
@@ -118,6 +142,7 @@ describe("tasks", () => {
       title: "Prepare notes",
       tags: ["Review", "work"],
       scheduledFor: "2026-04-29",
+      scheduledTime: "14:05",
     });
   });
 
