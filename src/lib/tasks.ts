@@ -5,6 +5,7 @@ export type TaskStatus = "today" | "inbox" | "done";
 export type Task = {
   id: string;
   title: string;
+  details?: string;
   tags: string[];
   status: TaskStatus;
   scheduledFor: string;
@@ -33,16 +34,19 @@ export function createTask(title: string, scheduledFor = getTodayKey()): Task {
 export function createTaggedTask(
   title: string,
   options: {
+    details?: string;
     scheduledFor?: string;
     tags?: string[];
   } = {},
 ): Task {
-  const { scheduledFor = getTodayKey(), tags = [] } = options;
+  const { details, scheduledFor = getTodayKey(), tags = [] } = options;
   const parsedDraft = parseTaskDraft(title);
+  const normalizedDetails = normalizeTaskDetails(details);
 
   return {
     id: createTaskId(),
     title: parsedDraft.title,
+    details: normalizedDetails,
     tags: normalizeTags([...parsedDraft.tags, ...tags]),
     status: "today",
     scheduledFor,
@@ -156,6 +160,7 @@ function parseStoredTask(value: unknown): Task | null {
     typeof task.id === "string" &&
     typeof task.title === "string" &&
     task.title.trim().length > 0 &&
+    (task.details === undefined || typeof task.details === "string") &&
     isTaskStatus(task.status) &&
     typeof task.scheduledFor === "string" &&
     typeof task.createdAt === "string" &&
@@ -165,6 +170,7 @@ function parseStoredTask(value: unknown): Task | null {
     return {
       id: task.id,
       title: task.title,
+      details: normalizeTaskDetails(task.details),
       tags: normalizeTags(task.tags ?? []),
       status: task.status,
       scheduledFor: task.scheduledFor,
@@ -251,4 +257,14 @@ function normalizeDraftTitle(value: string): string {
 
 function normalizeTag(value: string): string {
   return value.trim().replace(/^#+/, "").replace(/\s+/g, " ");
+}
+
+function normalizeTaskDetails(value: string | undefined): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalizedValue = value.replace(/\r\n?/g, "\n").trim();
+
+  return normalizedValue.length > 0 ? normalizedValue : undefined;
 }

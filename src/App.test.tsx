@@ -75,6 +75,22 @@ describe("App", () => {
     expect(screen.queryByText("买菜")).toBeTruthy();
   });
 
+  it("adds task details and renders them in the task list", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.type(screen.getByLabelText("待办标题"), "准备发布说明 #发布");
+    await user.type(
+      screen.getByLabelText("待办详情"),
+      "补充变更摘要\n列出回滚方案",
+    );
+    await user.click(screen.getByRole("button", { name: "添加今日待办" }));
+
+    expect(screen.getByText("准备发布说明")).toBeTruthy();
+    expect(screen.getByText(/补充变更摘要\s+列出回滚方案/u)).toBeTruthy();
+  });
+
   it("toggles dark theme and persists the choice", async () => {
     const user = userEvent.setup();
 

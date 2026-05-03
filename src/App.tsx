@@ -22,6 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   createTaggedTask,
   filterTasksByTag,
@@ -74,6 +75,7 @@ function App() {
   );
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const [draft, setDraft] = useState("");
+  const [detailDraft, setDetailDraft] = useState("");
   const [view, setView] = useState<View>("today");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
@@ -129,11 +131,13 @@ function App() {
 
     setTasks((current) => [
       createTaggedTask(draft, {
+        details: detailDraft,
         scheduledFor: todayKey,
       }),
       ...current,
     ]);
     setDraft("");
+    setDetailDraft("");
     setView("today");
   }
 
@@ -269,21 +273,34 @@ function App() {
                 <label className="sr-only" htmlFor="new-task-title">
                   待办标题
                 </label>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    id="new-task-title"
-                    className="sm:flex-1"
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    placeholder="添加今日待办，用 #标签 标记分类"
-                  />
-                  <Button
-                    aria-label="添加今日待办"
-                    className="sm:shrink-0"
-                    size="icon"
-                  >
-                    <Plus className="size-4" aria-hidden="true" />
-                  </Button>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      id="new-task-title"
+                      className="sm:flex-1"
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      placeholder="添加今日待办，用 #标签 标记分类"
+                    />
+                    <Button
+                      aria-label="添加今日待办"
+                      className="sm:shrink-0"
+                      size="icon"
+                    >
+                      <Plus className="size-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="sr-only" htmlFor="new-task-details">
+                      待办详情
+                    </label>
+                    <Textarea
+                      id="new-task-details"
+                      value={detailDraft}
+                      onChange={(event) => setDetailDraft(event.target.value)}
+                      placeholder="补充备注、背景或验收标准（可选）"
+                    />
+                  </div>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
                   直接在文本里写 #工作、#复盘 这样的标签即可
@@ -455,6 +472,11 @@ function TaskRow({ task, onComplete, onDelete, onMoveToToday }: TaskRowProps) {
         >
           {task.title}
         </p>
+        {task.details ? (
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">
+            {task.details}
+          </p>
+        ) : null}
         {task.tags.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {task.tags.map((tag) => (
