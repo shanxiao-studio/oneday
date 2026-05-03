@@ -13,6 +13,10 @@ export type Task = {
 };
 
 type StoredTask = Partial<Task>;
+type ParsedTaskDraft = {
+  title: string;
+  tags: string[];
+};
 
 export function getTodayKey(date = new Date()) {
   const year = date.getFullYear();
@@ -34,11 +38,12 @@ export function createTaggedTask(
   } = {},
 ): Task {
   const { scheduledFor = getTodayKey(), tags = [] } = options;
+  const parsedDraft = parseTaskDraft(title);
 
   return {
     id: createTaskId(),
-    title,
-    tags: normalizeTags(tags),
+    title: parsedDraft.title,
+    tags: normalizeTags([...parsedDraft.tags, ...tags]),
     status: "today",
     scheduledFor,
     createdAt: new Date().toISOString(),
@@ -90,8 +95,31 @@ export function sortTasks(tasks: Task[]): Task[] {
   });
 }
 
-export function parseTagInput(value: string): string[] {
-  return normalizeTags(value.split(/[,\n，]/));
+export function parseTaskDraft(value: string): ParsedTaskDraft {
+  const tags: string[] = [];
+  let title = "";
+  let index = 0;
+
+  while (index < value.length) {
+    if (value[index] === "#" && isTagStart(value, index)) {
+      const tagEnd = findTagEnd(value, index + 1);
+      const tag = value.slice(index + 1, tagEnd);
+
+      if (normalizeTag(tag)) {
+        tags.push(tag);
+        index = tagEnd;
+        continue;
+      }
+    }
+
+    title += value[index];
+    index += 1;
+  }
+
+  return {
+    title: normalizeDraftTitle(title),
+    tags: normalizeTags(tags),
+  };
 }
 
 export function filterTasksByTag(tasks: Task[], tag: string | null): Task[] {
@@ -189,6 +217,36 @@ function normalizeTags(tags: readonly string[]): string[] {
 
 function getTagLookupKey(value: string): string {
   return normalizeTag(value).toLocaleLowerCase();
+}
+
+function isTagStart(value: string, index: number): boolean {
+  return index === 0 || isTagBoundary(value[index - 1]);
+}
+
+function findTagEnd(value: string, index: number): number {
+  let cursor = index;
+
+  while (cursor < value.length) {
+    if (value[cursor] === "#" || isTagBoundary(value[cursor])) {
+      break;
+    }
+
+    cursor += 1;
+  }
+
+  return cursor;
+}
+
+function isTagBoundary(value: string): boolean {
+  return /[\s,，;；]/u.test(value);
+}
+
+function normalizeDraftTitle(value: string): string {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,，;；])/gu, "$1")
+    .replace(/[,，;；\s]+$/gu, "")
+    .trim();
 }
 
 function normalizeTag(value: string): string {

@@ -4,8 +4,8 @@ import {
   filterTasksByTag,
   getTaskTags,
   getTodayKey,
+  parseTaskDraft,
   parseStoredTasks,
-  parseTagInput,
   rolloverTasks,
   sortTasks,
   type Task,
@@ -76,22 +76,28 @@ describe("tasks", () => {
     ]);
   });
 
-  it("normalizes tags when creating and parsing tasks", () => {
-    expect(parseTagInput(" work, 生活，#Review, work ")).toEqual([
-      "work",
-      "生活",
-      "Review",
-    ]);
+  it("extracts inline tags from the task draft", () => {
+    expect(parseTaskDraft("写周报 #Review，#工作 #review")).toEqual({
+      title: "写周报",
+      tags: ["Review", "工作"],
+    });
 
+    expect(parseTaskDraft("  #生活  ")).toEqual({
+      title: "",
+      tags: ["生活"],
+    });
+  });
+
+  it("normalizes tags when creating tasks", () => {
     expect(
-      createTaggedTask("Prepare notes", {
+      createTaggedTask("Prepare notes #Review", {
         scheduledFor: "2026-04-29",
         tags: ["work", " Work ", "#review"],
       }),
     ).toMatchObject({
       title: "Prepare notes",
+      tags: ["Review", "work"],
       scheduledFor: "2026-04-29",
-      tags: ["work", "review"],
     });
   });
 

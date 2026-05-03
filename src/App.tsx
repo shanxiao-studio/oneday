@@ -27,8 +27,8 @@ import {
   filterTasksByTag,
   getTaskTags,
   getTodayKey,
+  parseTaskDraft,
   parseStoredTasks,
-  parseTagInput,
   rolloverTasks,
   sortTasks,
   STORAGE_KEY,
@@ -74,7 +74,6 @@ function App() {
   );
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const [draft, setDraft] = useState("");
-  const [tagDraft, setTagDraft] = useState("");
   const [view, setView] = useState<View>("today");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
@@ -123,20 +122,18 @@ function App() {
 
   function addTodayTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const title = draft.trim();
-    if (!title) {
+    const parsedDraft = parseTaskDraft(draft);
+    if (!parsedDraft.title) {
       return;
     }
 
     setTasks((current) => [
-      createTaggedTask(title, {
+      createTaggedTask(draft, {
         scheduledFor: todayKey,
-        tags: parseTagInput(tagDraft),
       }),
       ...current,
     ]);
     setDraft("");
-    setTagDraft("");
     setView("today");
   }
 
@@ -272,23 +269,13 @@ function App() {
                 <label className="sr-only" htmlFor="new-task-title">
                   待办标题
                 </label>
-                <label className="sr-only" htmlFor="new-task-tags">
-                  标签
-                </label>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     id="new-task-title"
                     className="sm:flex-1"
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
-                    placeholder="添加今日待办"
-                  />
-                  <Input
-                    id="new-task-tags"
-                    className="sm:max-w-52"
-                    value={tagDraft}
-                    onChange={(event) => setTagDraft(event.target.value)}
-                    placeholder="标签，用逗号分隔"
+                    placeholder="添加今日待办，用 #标签 标记分类"
                   />
                   <Button
                     aria-label="添加今日待办"
@@ -299,7 +286,7 @@ function App() {
                   </Button>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  可选标签，例如 工作，家务，复盘
+                  直接在文本里写 #工作、#复盘 这样的标签即可
                 </p>
               </form>
               {visibleTasks.length > 0 ? (

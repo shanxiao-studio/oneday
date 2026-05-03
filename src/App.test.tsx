@@ -48,16 +48,15 @@ describe("App", () => {
 
     render(<App />);
 
-    await user.type(screen.getByLabelText("待办标题"), "写周报");
-    await user.type(screen.getByLabelText("标签"), "Review");
+    expect(screen.queryByLabelText("标签")).toBeNull();
+
+    await user.type(screen.getByLabelText("待办标题"), "写周报 #Review");
     await user.click(screen.getByRole("button", { name: "添加今日待办" }));
 
-    await user.type(screen.getByLabelText("待办标题"), "买菜");
-    await user.type(screen.getByLabelText("标签"), "生活");
+    await user.type(screen.getByLabelText("待办标题"), "买菜 #生活");
     await user.click(screen.getByRole("button", { name: "添加今日待办" }));
 
-    await user.type(screen.getByLabelText("待办标题"), "过 PR");
-    await user.type(screen.getByLabelText("标签"), "review");
+    await user.type(screen.getByLabelText("待办标题"), "过 PR #review");
     await user.click(screen.getByRole("button", { name: "添加今日待办" }));
 
     expect(screen.getByRole("region", { name: "标签筛选" })).toBeTruthy();
