@@ -179,6 +179,9 @@ describe("App", () => {
 
     render(<App />);
 
+    expect(
+      screen.getByRole("heading", { name: "明日复明日，明日何其多" }),
+    ).toBeTruthy();
     expect(document.documentElement.classList.contains("dark")).toBe(false);
 
     await user.click(screen.getByRole("button", { name: "切换到暗色主题" }));
