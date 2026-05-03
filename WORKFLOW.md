@@ -11,6 +11,9 @@ tracker:
 workspace:
   root: ./workspace
 
+backend:
+  kind: codex
+
 polling:
   interval_ms: 30000
 
@@ -21,6 +24,14 @@ agent:
 
 codex:
   command: codex app-server
+  turn_timeout_ms: 3600000
+  stall_timeout_ms: 300000
+
+pi:
+  command: pi --mode rpc --no-session
+  provider: deepseek
+  model: deepseek-v4-flash
+  read_timeout_ms: 5000
   turn_timeout_ms: 3600000
   stall_timeout_ms: 300000
 
@@ -51,4 +62,5 @@ hooks:
 要求：
 0. 在当前分支完成代码修改，确保测试通过，可正常运行
 1. 提交 commit 并推送分支到 Github
-2. 创建待 Review 的 Pull Request，PR 标题包含 {{ issue.identifier }}，可在 PR 详情中包含可视化截图或视频
+2. 创建待 Review 的 Pull Request，PR 标题需包含 {{ issue.identifier }}
+3. 必要时可在 PR 详情中使用 chrome-devtools 截图或录制视频以帮助用户审核
