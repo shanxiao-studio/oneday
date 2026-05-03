@@ -4,6 +4,8 @@ import {
   CalendarDays,
   Check,
   Circle,
+  Clock3,
+  Flag,
   Inbox,
   Tags,
   ListChecks,
@@ -36,6 +38,7 @@ import {
   rolloverTasks,
   sortTasks,
   STORAGE_KEY,
+  type TaskPriority,
   type Task,
   updateTask as updateStoredTask,
 } from "@/lib/tasks";
@@ -61,6 +64,18 @@ const viewCopy: Record<View, { title: string; description: string }> = {
   },
 };
 
+const priorityOptions: Array<{ value: TaskPriority; label: string }> = [
+  { value: "high", label: "高优先级" },
+  { value: "medium", label: "中优先级" },
+  { value: "low", label: "低优先级" },
+];
+
+const priorityBadgeClassNames: Record<TaskPriority, string> = {
+  high: "bg-primary/12 text-primary",
+  medium: "bg-accent text-accent-foreground",
+  low: "bg-muted text-muted-foreground",
+};
+
 function getStoredTheme(): Theme {
   const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
   if (storedTheme === "light" || storedTheme === "dark") {
@@ -80,6 +95,8 @@ function App() {
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const [draft, setDraft] = useState("");
   const [detailDraft, setDetailDraft] = useState("");
+  const [draftPriority, setDraftPriority] = useState<TaskPriority>("medium");
+  const [timeDraft, setTimeDraft] = useState("");
   const [view, setView] = useState<View>("today");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
@@ -136,12 +153,16 @@ function App() {
     setTasks((current) => [
       createTaggedTask(draft, {
         details: detailDraft,
+        priority: draftPriority,
         scheduledFor: todayKey,
+        scheduledTime: timeDraft,
       }),
       ...current,
     ]);
     setDraft("");
     setDetailDraft("");
+    setDraftPriority("medium");
+    setTimeDraft("");
     setView("today");
   }
 
@@ -163,6 +184,7 @@ function App() {
               ...task,
               status: "today",
               scheduledFor: todayKey,
+              scheduledTime: undefined,
               completedAt: undefined,
             }
           : task,
@@ -180,13 +202,21 @@ function App() {
     updates: {
       title: string;
       details: string;
+      priority: TaskPriority;
       scheduledFor: string;
+      scheduledTime: string;
     },
   ) {
     setTasks((current) =>
       current.map((task) =>
         task.id === taskId ? updateStoredTask(task, updates) : task,
       ),
+    );
+  }
+
+  function updateTaskPriority(taskId: string, priority: TaskPriority) {
+    setTasks((current) =>
+      current.map((task) => (task.id === taskId ? { ...task, priority } : task)),
     );
   }
 
@@ -293,7 +323,7 @@ function App() {
                   待办标题
                 </label>
                 <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                     <Input
                       id="new-task-title"
                       className="sm:flex-1"
@@ -301,6 +331,28 @@ function App() {
                       onChange={(event) => setDraft(event.target.value)}
                       placeholder="添加今日待办，用 #标签 标记分类"
                     />
+                    <PrioritySelect
+                      ariaLabel="优先级"
+                      className="sm:w-40"
+                      onChange={setDraftPriority}
+                      value={draftPriority}
+                    />
+                    <div className="flex items-center gap-2 rounded-md border bg-background px-3">
+                      <label className="sr-only" htmlFor="new-task-time">
+                        当天时间
+                      </label>
+                      <Clock3
+                        className="size-4 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                      <Input
+                        id="new-task-time"
+                        className="w-[7.5rem] border-0 px-0 shadow-none focus-visible:ring-0"
+                        type="time"
+                        value={timeDraft}
+                        onChange={(event) => setTimeDraft(event.target.value)}
+                      />
+                    </div>
                     <Button
                       aria-label="添加今日待办"
                       className="sm:shrink-0"
@@ -322,7 +374,7 @@ function App() {
                   </div>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  直接在文本里写 #工作、#复盘 这样的标签即可
+                  直接在文本里写 #工作、#复盘 这样的标签即可，也可以补充详情、设定优先级和当天时间
                 </p>
               </form>
               {visibleTasks.length > 0 ? (
@@ -332,6 +384,7 @@ function App() {
                       key={task.id}
                       task={task}
                       onComplete={completeTask}
+                      onChangePriority={updateTaskPriority}
                       onDelete={deleteTask}
                       onMoveToToday={moveToToday}
                       onSave={saveTaskEdits}
@@ -365,10 +418,7 @@ function TagSidebarSection({
   onSelectTag,
 }: TagSidebarSectionProps) {
   return (
-    <section
-      className="rounded-lg border bg-card p-4"
-      aria-label="标签筛选"
-    >
+    <section className="rounded-lg border bg-card p-4" aria-label="标签筛选">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Tags className="size-4 text-primary" aria-hidden="true" />
         标签
@@ -463,6 +513,7 @@ function TagFilterButton({
 type TaskRowProps = {
   task: Task;
   onComplete: (taskId: string) => void;
+  onChangePriority: (taskId: string, priority: TaskPriority) => void;
   onDelete: (taskId: string) => void;
   onMoveToToday: (taskId: string) => void;
   onSave: (
@@ -470,7 +521,9 @@ type TaskRowProps = {
     updates: {
       title: string;
       details: string;
+      priority: TaskPriority;
       scheduledFor: string;
+      scheduledTime: string;
     },
   ) => void;
 };
@@ -482,6 +535,7 @@ function formatTaskTitleDraft(task: Task): string {
 function TaskRow({
   task,
   onComplete,
+  onChangePriority,
   onDelete,
   onMoveToToday,
   onSave,
@@ -489,30 +543,36 @@ function TaskRow({
   const [isEditing, setIsEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState(() => formatTaskTitleDraft(task));
   const [detailsDraft, setDetailsDraft] = useState(task.details ?? "");
+  const [priorityDraft, setPriorityDraft] = useState(task.priority);
   const [scheduledForDraft, setScheduledForDraft] = useState(task.scheduledFor);
+  const [scheduledTimeDraft, setScheduledTimeDraft] = useState(
+    task.scheduledTime ?? "",
+  );
   const parsedTitleDraft = parseTaskDraft(titleDraft);
+
+  function syncDraftsFromTask() {
+    setTitleDraft(formatTaskTitleDraft(task));
+    setDetailsDraft(task.details ?? "");
+    setPriorityDraft(task.priority);
+    setScheduledForDraft(task.scheduledFor);
+    setScheduledTimeDraft(task.scheduledTime ?? "");
+  }
 
   useEffect(() => {
     if (isEditing) {
       return;
     }
 
-    setTitleDraft(formatTaskTitleDraft(task));
-    setDetailsDraft(task.details ?? "");
-    setScheduledForDraft(task.scheduledFor);
+    syncDraftsFromTask();
   }, [isEditing, task]);
 
   function startEditing() {
-    setTitleDraft(formatTaskTitleDraft(task));
-    setDetailsDraft(task.details ?? "");
-    setScheduledForDraft(task.scheduledFor);
+    syncDraftsFromTask();
     setIsEditing(true);
   }
 
   function cancelEditing() {
-    setTitleDraft(formatTaskTitleDraft(task));
-    setDetailsDraft(task.details ?? "");
-    setScheduledForDraft(task.scheduledFor);
+    syncDraftsFromTask();
     setIsEditing(false);
   }
 
@@ -526,7 +586,9 @@ function TaskRow({
     onSave(task.id, {
       title: titleDraft,
       details: detailsDraft,
+      priority: priorityDraft,
       scheduledFor: scheduledForDraft,
+      scheduledTime: scheduledTimeDraft,
     });
     setIsEditing(false);
   }
@@ -560,19 +622,43 @@ function TaskRow({
                 placeholder="标题里直接写 #标签"
               />
             </div>
-            <div className="space-y-2">
-              <label
-                className="sr-only"
-                htmlFor={`task-scheduled-for-${task.id}`}
-              >
-                归属日期
-              </label>
-              <Input
-                id={`task-scheduled-for-${task.id}`}
-                type="date"
-                value={scheduledForDraft}
-                onChange={(event) => setScheduledForDraft(event.target.value)}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+              <PrioritySelect
+                ariaLabel="优先级"
+                className="sm:w-40"
+                onChange={setPriorityDraft}
+                value={priorityDraft}
               />
+              <div className="flex items-center gap-2 rounded-md border bg-background px-3">
+                <label className="sr-only" htmlFor={`task-time-${task.id}`}>
+                  当天时间
+                </label>
+                <Clock3
+                  className="size-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  id={`task-time-${task.id}`}
+                  className="w-[7.5rem] border-0 px-0 shadow-none focus-visible:ring-0"
+                  type="time"
+                  value={scheduledTimeDraft}
+                  onChange={(event) => setScheduledTimeDraft(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2 sm:flex-1">
+                <label
+                  className="sr-only"
+                  htmlFor={`task-scheduled-for-${task.id}`}
+                >
+                  归属日期
+                </label>
+                <Input
+                  id={`task-scheduled-for-${task.id}`}
+                  type="date"
+                  value={scheduledForDraft}
+                  onChange={(event) => setScheduledForDraft(event.target.value)}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <label className="sr-only" htmlFor={`task-details-${task.id}`}>
@@ -624,21 +710,34 @@ function TaskRow({
                 {task.details}
               </p>
             ) : null}
-            {task.tags.length > 0 ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {task.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground"
-                  >
-                    #{tag}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <PriorityBadge priority={task.priority} />
+              {task.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <PrioritySelect
+                ariaLabel={`设置 ${task.title} 的优先级`}
+                className="w-32"
+                onChange={(priority) => onChangePriority(task.id, priority)}
+                value={task.priority}
+              />
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span>归属日期 {task.scheduledFor}</span>
+                {task.scheduledTime ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Clock3 className="size-3.5" aria-hidden="true" />
+                    {task.scheduledTime}
                   </span>
-                ))}
+                ) : null}
               </div>
-            ) : null}
-            <p className="text-xs text-muted-foreground">
-              归属日期 {task.scheduledFor}
-            </p>
+            </div>
           </>
         )}
       </div>
@@ -676,6 +775,61 @@ function TaskRow({
         </>
       ) : null}
     </li>
+  );
+}
+
+type PrioritySelectProps = {
+  ariaLabel: string;
+  className?: string;
+  onChange: (priority: TaskPriority) => void;
+  value: TaskPriority;
+};
+
+function PrioritySelect({
+  ariaLabel,
+  className,
+  onChange,
+  value,
+}: PrioritySelectProps) {
+  return (
+    <div
+      className={cn(
+        "relative flex h-10 items-center rounded-md border border-input bg-card",
+        className,
+      )}
+    >
+      <Flag
+        className="pointer-events-none absolute left-3 size-4 text-muted-foreground"
+        aria-hidden="true"
+      />
+      <select
+        aria-label={ariaLabel}
+        className="h-full w-full appearance-none bg-transparent pl-9 pr-8 text-sm text-foreground outline-none"
+        onChange={(event) => onChange(event.target.value as TaskPriority)}
+        value={value}
+      >
+        {priorityOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: TaskPriority }) {
+  const label = priorityOptions.find((option) => option.value === priority)?.label;
+
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2.5 py-1 text-xs font-medium",
+        priorityBadgeClassNames[priority],
+      )}
+    >
+      {label}
+    </span>
   );
 }
 

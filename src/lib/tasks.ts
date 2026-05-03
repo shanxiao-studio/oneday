@@ -1,14 +1,17 @@
 export const STORAGE_KEY = "oneday.tasks";
 
 export type TaskStatus = "today" | "inbox" | "done";
+export type TaskPriority = "high" | "medium" | "low";
 
 export type Task = {
   id: string;
   title: string;
   details?: string;
   tags: string[];
+  priority: TaskPriority;
   status: TaskStatus;
   scheduledFor: string;
+  scheduledTime?: string;
   createdAt: string;
   completedAt?: string;
 };
@@ -16,7 +19,9 @@ export type Task = {
 export type TaskUpdate = {
   title: string;
   details?: string;
+  priority?: TaskPriority;
   scheduledFor?: string;
+  scheduledTime?: string;
 };
 
 type StoredTask = Partial<Task>;
@@ -41,21 +46,32 @@ export function createTaggedTask(
   title: string,
   options: {
     details?: string;
+    priority?: TaskPriority;
     scheduledFor?: string;
+    scheduledTime?: string;
     tags?: string[];
   } = {},
 ): Task {
-  const { details, scheduledFor = getTodayKey(), tags = [] } = options;
+  const {
+    details,
+    priority = "medium",
+    scheduledFor = getTodayKey(),
+    scheduledTime,
+    tags = [],
+  } = options;
   const parsedDraft = parseTaskDraft(title);
   const normalizedDetails = normalizeTaskDetails(details);
+  const normalizedScheduledTime = normalizeScheduledTime(scheduledTime);
 
   return {
     id: createTaskId(),
     title: parsedDraft.title,
     details: normalizedDetails,
     tags: normalizeTags([...parsedDraft.tags, ...tags]),
+    priority,
     status: "today",
     scheduledFor,
+    scheduledTime: normalizedScheduledTime,
     createdAt: new Date().toISOString(),
   };
 }
@@ -66,9 +82,20 @@ export function updateTask(task: Task, updates: TaskUpdate): Task {
   return {
     ...task,
     title: parsedDraft.title,
-    details: normalizeTaskDetails(updates.details),
+    details:
+      updates.details === undefined
+        ? task.details
+        : normalizeTaskDetails(updates.details),
     tags: parsedDraft.tags,
+    priority:
+      updates.priority === undefined
+        ? task.priority
+        : normalizeTaskPriority(updates.priority),
     scheduledFor: normalizeScheduledFor(updates.scheduledFor, task.scheduledFor),
+    scheduledTime:
+      updates.scheduledTime === undefined
+        ? task.scheduledTime
+        : normalizeScheduledTime(updates.scheduledTime),
   };
 }
 
@@ -103,6 +130,7 @@ export function rolloverTasks(tasks: Task[], todayKey = getTodayKey()): Task[] {
     return {
       ...task,
       status: "inbox",
+      scheduledTime: undefined,
       completedAt: undefined,
     };
   });
@@ -110,8 +138,28 @@ export function rolloverTasks(tasks: Task[], todayKey = getTodayKey()): Task[] {
 
 export function sortTasks(tasks: Task[]): Task[] {
   return [...tasks].sort((first, second) => {
-    const firstTime = Date.parse(first.completedAt ?? first.createdAt);
-    const secondTime = Date.parse(second.completedAt ?? second.createdAt);
+    if (first.status === "done" && second.status === "done") {
+      const firstTime = Date.parse(first.completedAt ?? first.createdAt);
+      const secondTime = Date.parse(second.completedAt ?? second.createdAt);
+
+      return secondTime - firstTime;
+    }
+
+    const scheduledTimeCompare = compareScheduledTime(first, second);
+
+    if (scheduledTimeCompare !== 0) {
+      return scheduledTimeCompare;
+    }
+
+    const priorityDelta =
+      getPriorityOrder(first.priority) - getPriorityOrder(second.priority);
+
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+
+    const firstTime = Date.parse(first.createdAt);
+    const secondTime = Date.parse(second.createdAt);
 
     return secondTime - firstTime;
   });
@@ -181,6 +229,7 @@ function parseStoredTask(value: unknown): Task | null {
     (task.details === undefined || typeof task.details === "string") &&
     isTaskStatus(task.status) &&
     typeof task.scheduledFor === "string" &&
+    (task.scheduledTime === undefined || typeof task.scheduledTime === "string") &&
     typeof task.createdAt === "string" &&
     (task.completedAt === undefined || typeof task.completedAt === "string") &&
     isTaskTags(task.tags)
@@ -190,8 +239,10 @@ function parseStoredTask(value: unknown): Task | null {
       title: task.title,
       details: normalizeTaskDetails(task.details),
       tags: normalizeTags(task.tags ?? []),
+      priority: normalizeTaskPriority(task.priority),
       status: task.status,
       scheduledFor: task.scheduledFor,
+      scheduledTime: normalizeScheduledTime(task.scheduledTime),
       createdAt: task.createdAt,
       completedAt: task.completedAt,
     };
@@ -208,11 +259,30 @@ function isTaskStatus(value: unknown): value is TaskStatus {
   return value === "today" || value === "inbox" || value === "done";
 }
 
+function isTaskPriority(value: unknown): value is TaskPriority {
+  return value === "high" || value === "medium" || value === "low";
+}
+
+function normalizeTaskPriority(value: unknown): TaskPriority {
+  return isTaskPriority(value) ? value : "medium";
+}
+
 function isTaskTags(value: unknown): value is string[] | undefined {
   return (
     value === undefined ||
     (Array.isArray(value) && value.every((tag) => typeof tag === "string"))
   );
+}
+
+function getPriorityOrder(priority: TaskPriority): number {
+  switch (priority) {
+    case "high":
+      return 0;
+    case "medium":
+      return 1;
+    case "low":
+      return 2;
+  }
 }
 
 function normalizeTags(tags: readonly string[]): string[] {
@@ -298,4 +368,43 @@ function normalizeTaskDetails(value: string | undefined): string | undefined {
   const normalizedValue = value.replace(/\r\n?/g, "\n").trim();
 
   return normalizedValue.length > 0 ? normalizedValue : undefined;
+}
+
+function normalizeScheduledTime(value: string | undefined): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalizedValue = value.trim();
+
+  return /^\d{2}:\d{2}$/.test(normalizedValue) ? normalizedValue : undefined;
+}
+
+function compareScheduledTime(first: Task, second: Task): number {
+  const firstMinutes = getScheduledMinutes(first);
+  const secondMinutes = getScheduledMinutes(second);
+
+  if (firstMinutes === secondMinutes) {
+    return 0;
+  }
+
+  if (firstMinutes === null) {
+    return 1;
+  }
+
+  if (secondMinutes === null) {
+    return -1;
+  }
+
+  return firstMinutes - secondMinutes;
+}
+
+function getScheduledMinutes(task: Task): number | null {
+  if (task.status !== "today" || !task.scheduledTime) {
+    return null;
+  }
+
+  const [hours, minutes] = task.scheduledTime.split(":").map(Number);
+
+  return hours * 60 + minutes;
 }
