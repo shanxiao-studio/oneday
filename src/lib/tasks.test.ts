@@ -79,7 +79,6 @@ describe("tasks", () => {
       },
     ]);
   });
-
   it("falls back to medium priority when stored priority is invalid", () => {
     expect(
       parseStoredTasks(
