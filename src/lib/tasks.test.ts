@@ -57,6 +57,24 @@ describe("tasks", () => {
     ]);
   });
 
+  it("keeps stored task details and normalizes line endings", () => {
+    expect(
+      parseStoredTasks(
+        JSON.stringify([
+          {
+            ...task,
+            details: "第一行\r\n第二行  ",
+          },
+        ]),
+      ),
+    ).toEqual([
+      {
+        ...task,
+        details: "第一行\n第二行",
+      },
+    ]);
+  });
+
   it("moves unfinished tasks from previous days to the inbox", () => {
     expect(rolloverTasks([task], "2026-04-30")).toEqual([
       {
@@ -91,10 +109,12 @@ describe("tasks", () => {
   it("normalizes tags when creating tasks", () => {
     expect(
       createTaggedTask("Prepare notes #Review", {
+        details: "\nContext line 1\r\nContext line 2\n",
         scheduledFor: "2026-04-29",
         tags: ["work", " Work ", "#review"],
       }),
     ).toMatchObject({
+      details: "Context line 1\nContext line 2",
       title: "Prepare notes",
       tags: ["Review", "work"],
       scheduledFor: "2026-04-29",
