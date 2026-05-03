@@ -13,6 +13,12 @@ export type Task = {
   completedAt?: string;
 };
 
+export type TaskUpdate = {
+  title: string;
+  details?: string;
+  scheduledFor?: string;
+};
+
 type StoredTask = Partial<Task>;
 type ParsedTaskDraft = {
   title: string;
@@ -51,6 +57,18 @@ export function createTaggedTask(
     status: "today",
     scheduledFor,
     createdAt: new Date().toISOString(),
+  };
+}
+
+export function updateTask(task: Task, updates: TaskUpdate): Task {
+  const parsedDraft = parseTaskDraft(updates.title);
+
+  return {
+    ...task,
+    title: parsedDraft.title,
+    details: normalizeTaskDetails(updates.details),
+    tags: parsedDraft.tags,
+    scheduledFor: normalizeScheduledFor(updates.scheduledFor, task.scheduledFor),
   };
 }
 
@@ -257,6 +275,19 @@ function normalizeDraftTitle(value: string): string {
 
 function normalizeTag(value: string): string {
   return value.trim().replace(/^#+/, "").replace(/\s+/g, " ");
+}
+
+function normalizeScheduledFor(
+  value: string | undefined,
+  fallback: string,
+): string {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const normalizedValue = value.trim();
+
+  return normalizedValue.length > 0 ? normalizedValue : fallback;
 }
 
 function normalizeTaskDetails(value: string | undefined): string | undefined {

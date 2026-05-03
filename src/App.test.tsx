@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 
@@ -89,6 +89,46 @@ describe("App", () => {
 
     expect(screen.getByText("准备发布说明")).toBeTruthy();
     expect(screen.getByText(/补充变更摘要\s+列出回滚方案/u)).toBeTruthy();
+  });
+
+  it("edits an existing task title, tags, details, and scheduled date", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.type(screen.getByLabelText("待办标题"), "写周报 #工作");
+    await user.type(screen.getByLabelText("待办详情"), "整理本周进展");
+    await user.click(screen.getByRole("button", { name: "添加今日待办" }));
+
+    await user.click(screen.getByRole("button", { name: "编辑 写周报" }));
+
+    const titleInput = screen.getByDisplayValue("写周报 #工作");
+    await user.clear(titleInput);
+    await user.type(titleInput, "更新周报 #复盘");
+
+    const dateInput = screen.getByDisplayValue("2026-05-03");
+    await user.clear(dateInput);
+    await user.type(dateInput, "2026-05-04");
+
+    const detailInput = screen.getByDisplayValue("整理本周进展");
+    await user.clear(detailInput);
+    await user.type(detailInput, "补充阻塞项");
+
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    const updatedTask = screen.getByText("更新周报").closest("li");
+
+    expect(updatedTask).toBeTruthy();
+    expect(screen.getByText("更新周报")).toBeTruthy();
+    expect(within(updatedTask!).getByText("补充阻塞项")).toBeTruthy();
+    expect(within(updatedTask!).getByText("#复盘")).toBeTruthy();
+    expect(screen.queryByText("#工作")).toBeNull();
+    expect(within(updatedTask!).getByText("归属日期 2026-05-04")).toBeTruthy();
+
+    const tagRegion = screen.getByRole("region", { name: "标签筛选" });
+    await user.click(within(tagRegion).getByRole("button", { name: /#复盘/i }));
+
+    expect(screen.getByText("更新周报")).toBeTruthy();
   });
 
   it("toggles dark theme and persists the choice", async () => {
