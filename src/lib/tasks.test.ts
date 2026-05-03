@@ -8,6 +8,7 @@ import {
   parseStoredTasks,
   rolloverTasks,
   sortTasks,
+  type TaskPriority,
   type Task,
 } from "./tasks";
 
@@ -15,6 +16,7 @@ const task: Task = {
   id: "task-1",
   title: "Write summary",
   tags: ["work"],
+  priority: "medium",
   status: "today",
   scheduledFor: "2026-04-29",
   createdAt: "2026-04-29T08:00:00.000Z",
@@ -50,6 +52,7 @@ describe("tasks", () => {
         id: "legacy-task",
         title: "Legacy item",
         tags: [],
+        priority: "medium",
         status: "today",
         scheduledFor: "2026-04-29",
         createdAt: "2026-04-29T08:00:00.000Z",
@@ -73,6 +76,25 @@ describe("tasks", () => {
         ...task,
         details: "第一行\n第二行",
         scheduledTime: "09:30",
+      },
+    ]);
+  });
+  it("falls back to medium priority when stored priority is invalid", () => {
+    expect(
+      parseStoredTasks(
+        JSON.stringify([
+          {
+            ...task,
+            id: "invalid-priority",
+            priority: "urgent",
+          },
+        ]),
+      ),
+    ).toEqual([
+      {
+        ...task,
+        id: "invalid-priority",
+        priority: "medium",
       },
     ]);
   });
@@ -107,6 +129,27 @@ describe("tasks", () => {
     ]);
   });
 
+  it("uses priority when scheduled time is the same", () => {
+    const highPriorityTask = {
+      ...task,
+      id: "high-priority",
+      priority: "high" as TaskPriority,
+      scheduledTime: "09:15",
+      createdAt: "2026-04-29T08:00:00.000Z",
+    };
+    const lowPriorityTask = {
+      ...task,
+      id: "low-priority",
+      priority: "low" as TaskPriority,
+      scheduledTime: "09:15",
+      createdAt: "2026-04-30T08:00:00.000Z",
+    };
+
+    expect(sortTasks([lowPriorityTask, highPriorityTask]).map((item) => item.id)).toEqual(
+      ["high-priority", "low-priority"],
+    );
+  });
+
   it("keeps the newest untimed tasks first", () => {
     const older = { ...task, id: "older", createdAt: "2026-04-29T08:00:00.000Z" };
     const newer = { ...task, id: "newer", createdAt: "2026-04-30T08:00:00.000Z" };
@@ -115,6 +158,25 @@ describe("tasks", () => {
       "newer",
       "older",
     ]);
+  });
+
+  it("places higher priority open tasks before newer low priority ones", () => {
+    const highPriorityTask = {
+      ...task,
+      id: "high-priority",
+      priority: "high" as TaskPriority,
+      createdAt: "2026-04-29T08:00:00.000Z",
+    };
+    const lowPriorityTask = {
+      ...task,
+      id: "low-priority",
+      priority: "low" as TaskPriority,
+      createdAt: "2026-04-30T08:00:00.000Z",
+    };
+
+    expect(sortTasks([lowPriorityTask, highPriorityTask]).map((item) => item.id)).toEqual(
+      ["high-priority", "low-priority"],
+    );
   });
 
   it("extracts inline tags from the task draft", () => {
@@ -133,12 +195,14 @@ describe("tasks", () => {
     expect(
       createTaggedTask("Prepare notes #Review", {
         details: "\nContext line 1\r\nContext line 2\n",
+        priority: "high",
         scheduledFor: "2026-04-29",
         scheduledTime: "14:05",
         tags: ["work", " Work ", "#review"],
       }),
     ).toMatchObject({
       details: "Context line 1\nContext line 2",
+      priority: "high",
       title: "Prepare notes",
       tags: ["Review", "work"],
       scheduledFor: "2026-04-29",
