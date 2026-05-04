@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
+import { getTodayKey } from "./lib/tasks";
 
 describe("App", () => {
   beforeEach(() => {
@@ -145,7 +146,7 @@ describe("App", () => {
     await user.clear(timeInput);
     await user.type(timeInput, "16:45");
 
-    const dateInput = within(editingTask!).getByDisplayValue("2026-05-03");
+    const dateInput = within(editingTask!).getByDisplayValue(getTodayKey());
     await user.clear(dateInput);
     await user.type(dateInput, "2026-05-04");
 

@@ -207,7 +207,10 @@ tempCodeRunnerFile.py
 
 # Node
 node_modules/
+.npm-cache/
+.electron-cache/
 dist/
+dist-electron/
 *.local
 npm-debug.log*
 yarn-debug.log*

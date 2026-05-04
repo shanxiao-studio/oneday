@@ -3,10 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:renderer": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "dev:electron": "npm run build:electron && wait-on tcp:5173 && cross-env ELECTRON_RENDERER_URL=http://127.0.0.1:5173 electron .",
     "build": "tsc -b && vite build",
-    "preview": "vite preview",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "preview": "npm run build && electron .",
     "test": "vitest --configLoader runner run"
   },
   "dependencies": {
@@ -26,10 +30,14 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.22",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^38.3.0",
     "jsdom": "^27.3.0",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.3",
     "vite": "^7.3.0",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "wait-on": "^9.0.1"
   }
 }
