@@ -184,6 +184,7 @@ describe("App", () => {
 
     render(<App />);
 
+    expect(screen.queryByText("日终")).toBeNull();
     expect(
       screen.getByRole("heading", { name: "明日复明日，明日何其多" }),
     ).toBeTruthy();

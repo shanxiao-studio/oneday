@@ -1,6 +1,5 @@
 import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import {
-  Archive,
   CalendarDays,
   Check,
   Circle,
@@ -130,9 +129,6 @@ function App() {
     () => filterTasksByTag(baseTasks, selectedTag),
     [baseTasks, selectedTag],
   );
-  const totalTasks = tasks.length;
-  const completionRate =
-    totalTasks === 0 ? 0 : Math.round((doneTasks.length / totalTasks) * 100);
   const nextFocusTask = todayTasks.find((task) => task.scheduledTime) ?? todayTasks[0];
 
   useEffect(() => {
@@ -242,9 +238,6 @@ function App() {
                 <span className="rounded-full border border-border/80 bg-background/70 px-3 py-1.5">
                   {viewCopy[view].title}
                 </span>
-                <span className="rounded-full border border-border/80 bg-background/70 px-3 py-1.5">
-                  Completion {completionRate}%
-                </span>
               </div>
             </div>
 
@@ -324,41 +317,6 @@ function App() {
                   onClick={() => setView("done")}
                 />
               </nav>
-            </section>
-
-            <section className="planner-panel planner-animate planner-delay-2 overflow-hidden px-5 py-5">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Archive className="size-4 text-foreground" aria-hidden="true" />
-                日终
-              </div>
-              <p className="mt-4 text-5xl font-semibold tracking-[-0.08em] text-foreground">
-                {completionRate}%
-              </p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                当前总计 {totalTasks} 项任务，今天还剩 {todayTasks.length} 项。保持版面克制，只把真正要推进的事留在眼前。
-              </p>
-              <div className="mt-5 space-y-4 border-t border-border/70 pt-4 text-sm text-muted-foreground">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.22em]">Next focus</p>
-                    <p className="mt-2 text-sm text-foreground">
-                      {nextFocusTask ? "已有焦点任务" : "先写下第一件事"}
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-border/80 px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {nextFocusTask?.scheduledTime ? "Timed" : "Untimed"}
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.22em]">Scope</p>
-                    <p className="mt-2 text-sm text-foreground">今天只留要做的。</p>
-                  </div>
-                  <span className="rounded-full border border-border/80 px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {visibleTasks.length} Visible
-                  </span>
-                </div>
-              </div>
             </section>
 
             <TagSidebarSection
