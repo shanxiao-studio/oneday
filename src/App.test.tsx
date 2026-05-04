@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
+import { getTodayKey } from "./lib/tasks";
 
 describe("App", () => {
   beforeEach(() => {
@@ -119,6 +120,8 @@ describe("App", () => {
 
   it("edits an existing task title, tags, details, date, priority, and time", async () => {
     const user = userEvent.setup();
+    const initialScheduledFor = getTodayKey();
+    const updatedScheduledFor = "2026-05-04";
 
     render(<App />);
 
@@ -145,9 +148,9 @@ describe("App", () => {
     await user.clear(timeInput);
     await user.type(timeInput, "16:45");
 
-    const dateInput = within(editingTask!).getByDisplayValue("2026-05-03");
+    const dateInput = within(editingTask!).getByDisplayValue(initialScheduledFor);
     await user.clear(dateInput);
-    await user.type(dateInput, "2026-05-04");
+    await user.type(dateInput, updatedScheduledFor);
 
     const detailInput = within(editingTask!).getByDisplayValue("整理本周进展");
     await user.clear(detailInput);
@@ -162,7 +165,9 @@ describe("App", () => {
     expect(within(updatedTask!).getByText("补充阻塞项")).toBeTruthy();
     expect(within(updatedTask!).getByText("#复盘")).toBeTruthy();
     expect(screen.queryByText("#工作")).toBeNull();
-    expect(within(updatedTask!).getByText("归属日期 2026-05-04")).toBeTruthy();
+    expect(
+      within(updatedTask!).getByText(`归属日期 ${updatedScheduledFor}`),
+    ).toBeTruthy();
     expect(within(updatedTask!).getByText("16:45")).toBeTruthy();
     expect(
       within(updatedTask!).getByLabelText("设置 更新周报 的优先级"),
@@ -179,6 +184,7 @@ describe("App", () => {
 
     render(<App />);
 
+    expect(screen.queryByText("日终")).toBeNull();
     expect(
       screen.getByRole("heading", { name: "明日复明日，明日何其多" }),
     ).toBeTruthy();

@@ -1,6 +1,5 @@
 import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import {
-  Archive,
   CalendarDays,
   Check,
   Circle,
@@ -65,11 +64,9 @@ const priorityOptions: Array<{ value: TaskPriority; label: string }> = [
 
 const priorityBadgeClassNames: Record<TaskPriority, string> = {
   high:
-    "border border-primary/20 bg-primary/10 text-primary dark:border-primary/30 dark:bg-primary/20",
-  medium:
-    "border border-amber-900/10 bg-amber-950/[0.05] text-amber-950/80 dark:border-amber-200/10 dark:bg-amber-50/10 dark:text-amber-100",
-  low:
-    "border border-border/70 bg-background/80 text-muted-foreground dark:bg-background/30",
+    "border border-zinc-950 bg-zinc-950 text-white dark:border-white dark:bg-white dark:text-zinc-950",
+  medium: "border border-zinc-300 bg-zinc-200/90 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100",
+  low: "border border-border/80 bg-background/90 text-muted-foreground dark:bg-zinc-900/80",
 };
 
 function getStoredTheme(): Theme {
@@ -132,9 +129,6 @@ function App() {
     () => filterTasksByTag(baseTasks, selectedTag),
     [baseTasks, selectedTag],
   );
-  const totalTasks = tasks.length;
-  const completionRate =
-    totalTasks === 0 ? 0 : Math.round((doneTasks.length / totalTasks) * 100);
   const nextFocusTask = todayTasks.find((task) => task.scheduledTime) ?? todayTasks[0];
 
   useEffect(() => {
@@ -222,63 +216,79 @@ function App() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.16),_transparent_32%),radial-gradient(circle_at_bottom_right,_hsl(var(--secondary)/0.45),_transparent_28%)]" />
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1480px] flex-col px-4 py-4 sm:px-6 lg:px-8">
-        <header className="planner-panel planner-animate flex flex-col gap-6 px-5 py-5 sm:px-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-primary">
-              oneday
-            </p>
-            <h1 className="font-display mt-3 text-4xl leading-none sm:text-5xl lg:text-[4.5rem]">
-              明日复明日，明日何其多
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              今天、收件箱、已完成，同桌切换。
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 self-start lg:min-w-[290px] lg:self-auto">
-            <div className="flex items-center justify-between rounded-[1.4rem] border border-border/70 bg-background/75 px-4 py-3 backdrop-blur">
-              <div className="flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <CalendarDays className="size-5" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                    Today
-                  </p>
-                  <p className="font-display text-lg">{todayKey}</p>
-                </div>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.96),_rgba(255,255,255,0.2)_34%,_transparent_64%),linear-gradient(180deg,_rgba(255,255,255,0.78),_transparent_22%,_transparent_78%,_rgba(255,255,255,0.5)),linear-gradient(90deg,_rgba(15,23,42,0.04)_1px,_transparent_1px),linear-gradient(180deg,_rgba(15,23,42,0.035)_1px,_transparent_1px)] bg-[size:auto,auto,32px_32px,32px_32px]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/8 via-transparent to-transparent dark:from-white/8" />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1520px] flex-col px-4 py-4 sm:px-6 lg:px-8">
+        <header className="planner-panel planner-animate overflow-hidden px-5 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
+            <div className="max-w-4xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.36em] text-muted-foreground">
+                oneday / daily desk
+              </p>
+              <h1 className="font-display mt-4 max-w-3xl text-4xl leading-[0.92] sm:text-5xl lg:text-[5.4rem]">
+                明日复明日，明日何其多
+              </h1>
+              <p className="mt-5 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                只留下今天真正要做的事。今天、收件箱、已完成同桌切换，视线更安静，决策更直接。
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="rounded-full border border-border/80 bg-background/70 px-3 py-1.5">
+                  Today {todayKey}
+                </span>
+                <span className="rounded-full border border-border/80 bg-background/70 px-3 py-1.5">
+                  {viewCopy[view].title}
+                </span>
               </div>
-              <Button
-                aria-label={theme === "dark" ? "切换到浅色主题" : "切换到暗色主题"}
-                className="rounded-full"
-                onClick={() =>
-                  setTheme((currentTheme) =>
-                    currentTheme === "dark" ? "light" : "dark",
-                  )
-                }
-                size="icon"
-                type="button"
-                variant="outline"
-              >
-                {theme === "dark" ? (
-                  <Sun className="size-4" aria-hidden="true" />
-                ) : (
-                  <Moon className="size-4" aria-hidden="true" />
-                )}
-              </Button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <MetricTile label="今日" value={todayTasks.length} />
-              <MetricTile label="收件箱" value={inboxTasks.length} />
-              <MetricTile label="已完成" value={doneTasks.length} />
+            <div className="flex flex-col gap-3 self-start lg:self-auto">
+              <div className="rounded-[2rem] border border-border/80 bg-background/75 p-4 backdrop-blur-xl">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
+                      Focus
+                    </p>
+                    <p className="mt-3 text-4xl font-semibold tracking-[-0.06em] text-foreground sm:text-5xl">
+                      {todayTasks.length}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {nextFocusTask
+                        ? nextFocusTask.scheduledTime
+                          ? "已安排时间"
+                          : "下一项已就位"
+                        : "先写下第一件事"}
+                    </p>
+                  </div>
+                  <Button
+                    aria-label={theme === "dark" ? "切换到浅色主题" : "切换到暗色主题"}
+                    className="rounded-full border-border/80 bg-background/80"
+                    onClick={() =>
+                      setTheme((currentTheme) =>
+                        currentTheme === "dark" ? "light" : "dark",
+                      )
+                    }
+                    size="icon"
+                    type="button"
+                    variant="outline"
+                  >
+                    {theme === "dark" ? (
+                      <Sun className="size-4" aria-hidden="true" />
+                    ) : (
+                      <Moon className="size-4" aria-hidden="true" />
+                    )}
+                  </Button>
+                </div>
+                <div className="mt-6 grid grid-cols-3 gap-3 text-sm">
+                  <MetricTile label="今日" value={todayTasks.length} />
+                  <MetricTile label="收件箱" value={inboxTasks.length} />
+                  <MetricTile label="已完成" value={doneTasks.length} />
+                </div>
+              </div>
             </div>
           </div>
         </header>
 
-        <section className="grid flex-1 gap-5 py-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <section className="grid flex-1 gap-5 py-5 lg:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
             <section className="planner-panel planner-animate planner-delay-1 p-3">
               <nav aria-label="任务视图" className="space-y-1">
@@ -309,43 +319,6 @@ function App() {
               </nav>
             </section>
 
-            <section className="planner-panel planner-animate planner-delay-2 overflow-hidden">
-              <div className="border-b border-border/60 px-5 py-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Archive className="size-4 text-primary" aria-hidden="true" />
-                  日终
-                </div>
-                <p className="font-display mt-3 text-4xl leading-none">
-                  {todayTasks.length}
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {todayTasks.length} 项未完成，完成率 {completionRate}%。
-                </p>
-              </div>
-              <div className="grid gap-3 px-5 py-4 text-sm text-muted-foreground">
-                <div className="rounded-[1.25rem] bg-background/75 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.22em]">Next focus</p>
-                  <p className="mt-2 font-medium text-foreground">
-                    {nextFocusTask ? "已有焦点任务" : "先写下第一件事"}
-                  </p>
-                  <p className="mt-1 text-xs">
-                    {nextFocusTask
-                      ? nextFocusTask.scheduledTime
-                        ? `${nextFocusTask.scheduledTime} 开始`
-                        : "未设时间"
-                      : "从这里开始"}
-                  </p>
-                </div>
-                <div className="rounded-[1.25rem] bg-background/75 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.22em]">Scope</p>
-                  <p className="mt-2 font-medium text-foreground">
-                    当前总计 {totalTasks} 项任务
-                  </p>
-                  <p className="mt-1 text-xs">今天只留要做的。</p>
-                </div>
-              </div>
-            </section>
-
             <TagSidebarSection
               availableTags={availableTags}
               baseTaskCount={baseTasks.length}
@@ -356,13 +329,13 @@ function App() {
           </aside>
 
           <section className="planner-panel planner-animate planner-delay-2 overflow-hidden">
-            <div className="border-b border-border/60 px-5 py-5 sm:px-7">
+            <div className="border-b border-border/70 px-5 py-6 sm:px-7">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                 <div className="max-w-2xl">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground">
                     Workspace
                   </p>
-                  <h2 className="font-display mt-2 text-3xl sm:text-[2.4rem]">
+                  <h2 className="font-display mt-3 text-3xl tracking-[-0.05em] sm:text-[2.5rem]">
                     {viewCopy[view].title}
                   </h2>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -371,15 +344,15 @@ function App() {
                       : viewCopy[view].description}
                   </p>
                 </div>
-                <div className="flex items-center gap-3 self-start rounded-full border border-border/70 bg-background/70 px-4 py-2 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{visibleTasks.length}</span>
-                  <span>项</span>
+                <div className="flex items-center gap-3 self-start rounded-full border border-border/80 bg-background/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                  <span className="text-foreground">{visibleTasks.length}</span>
+                  <span>Visible items</span>
                 </div>
               </div>
             </div>
 
-            <form className="border-b border-border/60 px-5 py-5 sm:px-7" onSubmit={addTodayTask}>
-              <div className="rounded-[1.75rem] border border-border/70 bg-background/75 p-4 sm:p-5">
+            <form className="border-b border-border/70 px-5 py-5 sm:px-7" onSubmit={addTodayTask}>
+              <div className="rounded-[2rem] border border-border/80 bg-background/75 p-4 shadow-[0_16px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl sm:p-5">
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_11rem_9rem_auto]">
                   <div className="xl:col-span-1">
                     <label className="sr-only" htmlFor="new-task-title">
@@ -414,7 +387,7 @@ function App() {
                   </div>
                   <Button
                     aria-label="添加今日待办"
-                    className="h-12 rounded-[1rem] px-5"
+                    className="h-12 rounded-[1rem] bg-foreground px-5 text-background hover:bg-foreground/90"
                     type="submit"
                   >
                     <Plus className="size-4" aria-hidden="true" />
@@ -466,11 +439,13 @@ function App() {
 
 function MetricTile({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[1.4rem] border border-border/70 bg-background/75 px-4 py-3 text-center backdrop-blur">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+    <div className="rounded-[1.5rem] border border-border/80 bg-background/80 px-4 py-3 text-left backdrop-blur-xl">
+      <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
         {label}
       </p>
-      <p className="font-display mt-2 text-2xl leading-none">{value}</p>
+      <p className="mt-3 text-3xl font-semibold leading-none tracking-[-0.06em] text-foreground">
+        {value}
+      </p>
     </div>
   );
 }
@@ -496,7 +471,7 @@ function TagSidebarSection({
       className="planner-panel planner-animate planner-delay-2 p-5"
     >
       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <Tags className="size-4 text-primary" aria-hidden="true" />
+        <Tags className="size-4 text-foreground" aria-hidden="true" />
         标签
       </div>
       {availableTags.length > 0 ? (
@@ -544,9 +519,9 @@ function ViewButton({
   return (
     <button
       className={cn(
-        "group flex w-full items-center justify-between rounded-[1.25rem] px-4 py-3 text-left transition-all duration-200",
+        "group flex w-full items-center justify-between rounded-[1.4rem] px-4 py-3.5 text-left transition-all duration-200",
         active
-          ? "bg-primary text-primary-foreground shadow-[0_12px_34px_rgba(212,96,60,0.24)]"
+          ? "bg-foreground text-background shadow-[0_22px_50px_rgba(15,23,42,0.12)]"
           : "text-muted-foreground hover:bg-background/80 hover:text-foreground",
       )}
       onClick={onClick}
@@ -557,8 +532,8 @@ function ViewButton({
           className={cn(
             "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors",
             active
-              ? "border-primary-foreground/20 bg-primary-foreground/10"
-              : "border-border/70 bg-background/70 text-primary group-hover:border-primary/30",
+              ? "border-white/15 bg-white/10"
+              : "border-border/70 bg-background/70 text-foreground group-hover:border-foreground/20",
           )}
         >
           {icon}
@@ -568,7 +543,7 @@ function ViewButton({
           <span
             className={cn(
               "mt-1 block text-xs leading-5",
-              active ? "text-primary-foreground/75" : "text-muted-foreground",
+              active ? "text-background/70" : "text-muted-foreground",
             )}
           >
             {note}
@@ -578,7 +553,7 @@ function ViewButton({
       <span
         className={cn(
           "font-display text-2xl leading-none",
-          active ? "text-primary-foreground" : "text-foreground",
+          active ? "text-background" : "text-foreground",
         )}
       >
         {count}
@@ -606,8 +581,8 @@ function TagFilterButton({
       className={cn(
         "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm transition-all duration-200",
         active
-          ? "border-primary bg-primary text-primary-foreground shadow-[0_10px_26px_rgba(212,96,60,0.18)]"
-          : "border-border/80 bg-background/70 text-muted-foreground hover:border-primary/35 hover:text-foreground",
+          ? "border-foreground bg-foreground text-background shadow-[0_10px_26px_rgba(15,23,42,0.12)]"
+          : "border-border/80 bg-background/70 text-muted-foreground hover:border-foreground/25 hover:text-foreground",
       )}
       onClick={onClick}
       type="button"
@@ -708,7 +683,7 @@ function TaskRow({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <button
           aria-label={`完成 ${task.title}`}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/75 text-muted-foreground transition-all duration-200 hover:border-primary hover:text-primary disabled:hover:border-border/70 disabled:hover:text-muted-foreground"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/80 text-muted-foreground transition-all duration-200 hover:border-foreground hover:text-foreground disabled:hover:border-border/70 disabled:hover:text-muted-foreground"
           disabled={task.status === "done" || isEditing}
           onClick={() => onComplete(task.id)}
           type="button"
@@ -722,7 +697,10 @@ function TaskRow({
 
         <div className="min-w-0 flex-1">
           {isEditing ? (
-            <form className="rounded-[1.5rem] bg-background/70 p-4 sm:p-5" onSubmit={submitEdits}>
+            <form
+              className="rounded-[1.75rem] border border-border/80 bg-background/70 p-4 shadow-[0_16px_40px_rgba(15,23,42,0.05)] sm:p-5"
+              onSubmit={submitEdits}
+            >
               <div className="space-y-3">
                 <div>
                   <label className="sr-only" htmlFor={`task-title-${task.id}`}>
@@ -787,7 +765,7 @@ function TaskRow({
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
-                  className="rounded-full"
+                  className="rounded-full bg-foreground text-background hover:bg-foreground/90"
                   disabled={!parsedTitleDraft.title}
                   size="sm"
                   type="submit"
@@ -813,7 +791,7 @@ function TaskRow({
                 <div className="min-w-0 flex-1">
                   <p
                     className={cn(
-                      "font-display break-words text-[1.35rem] leading-tight sm:text-[1.5rem]",
+                      "break-words text-[1.2rem] font-medium leading-tight tracking-[-0.04em] sm:text-[1.35rem]",
                       task.status === "done" && "text-muted-foreground line-through",
                     )}
                   >
@@ -861,7 +839,7 @@ function TaskRow({
                 <div className="flex flex-wrap items-center gap-2">
                   {task.status !== "today" ? (
                     <Button
-                      className="rounded-full"
+                      className="rounded-full border-border/80 bg-background/70"
                       onClick={() => onMoveToToday(task.id)}
                       size="sm"
                       type="button"
@@ -970,7 +948,7 @@ function EmptyState({ view }: { view: View }) {
   return (
     <div className="flex min-h-[460px] items-center justify-center px-6 py-12 text-center">
       <div className="max-w-sm">
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-border/70 bg-background/75 text-primary">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-border/70 bg-background/75 text-foreground">
           <Inbox className="size-6" aria-hidden="true" />
         </div>
         <p className="font-display mt-5 text-2xl">{copy}</p>
