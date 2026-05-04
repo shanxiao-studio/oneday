@@ -76,7 +76,7 @@ describe("App", () => {
     expect(screen.queryByText("买菜")).toBeTruthy();
   });
 
-  it("adds a task with compact metadata controls and no detail field", async () => {
+  it("adds a task with compact metadata controls and opens it in the detail panel", async () => {
     const user = userEvent.setup();
 
     render(<App />);
@@ -87,8 +87,14 @@ describe("App", () => {
     await user.type(screen.getByLabelText("当天时间"), "14:30");
     await user.click(screen.getByRole("button", { name: "添加今日待办" }));
 
-    expect(screen.getByText("准备发布说明")).toBeTruthy();
-    expect(screen.getByText("14:30")).toBeTruthy();
+    const addedTask = screen.getByText("准备发布说明").closest("li");
+    expect(addedTask).toBeTruthy();
+    expect(within(addedTask!).getByText("14:30")).toBeTruthy();
+
+    const detailPanel = screen.getByLabelText("任务详情侧栏");
+    expect(within(detailPanel).getByDisplayValue("准备发布说明 #发布")).toBeTruthy();
+    expect(within(detailPanel).getByText("14:30")).toBeTruthy();
+    expect(within(detailPanel).getByLabelText("待办详情")).toBeTruthy();
   });
 
   it("opens a side detail panel when a task is selected", async () => {
@@ -99,10 +105,6 @@ describe("App", () => {
     await user.type(screen.getByLabelText("待办标题"), "准备发布说明 #发布");
     await user.type(screen.getByLabelText("当天时间"), "14:30");
     await user.click(screen.getByRole("button", { name: "添加今日待办" }));
-
-    expect(screen.getByText("选中一个 TODO")).toBeTruthy();
-
-    await user.click(screen.getByRole("button", { name: "查看 准备发布说明 详情" }));
 
     const detailPanel = screen.getByLabelText("任务详情侧栏");
     expect(within(detailPanel).getByDisplayValue("准备发布说明 #发布")).toBeTruthy();

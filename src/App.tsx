@@ -153,17 +153,18 @@ function App() {
       return;
     }
 
-    setTasks((current) => [
-      createTaggedTask(draft, {
-        priority: draftPriority,
-        scheduledFor: todayKey,
-        scheduledTime: timeDraft,
-      }),
-      ...current,
-    ]);
+    const newTask = createTaggedTask(draft, {
+      priority: draftPriority,
+      scheduledFor: todayKey,
+      scheduledTime: timeDraft,
+    });
+
+    setTasks((current) => [newTask, ...current]);
     setDraft("");
     setDraftPriority("medium");
     setTimeDraft("");
+    setSelectedTag(null);
+    setSelectedTaskId(newTask.id);
     setView("today");
   }
 
