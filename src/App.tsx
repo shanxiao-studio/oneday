@@ -92,6 +92,7 @@ function App() {
   const [timeDraft, setTimeDraft] = useState("");
   const [view, setView] = useState<View>("today");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
@@ -129,6 +130,10 @@ function App() {
     () => filterTasksByTag(baseTasks, selectedTag),
     [baseTasks, selectedTag],
   );
+  const selectedTask = useMemo(
+    () => visibleTasks.find((task) => task.id === selectedTaskId) ?? null,
+    [selectedTaskId, visibleTasks],
+  );
   const nextFocusTask = todayTasks.find((task) => task.scheduledTime) ?? todayTasks[0];
 
   useEffect(() => {
@@ -136,6 +141,12 @@ function App() {
       setSelectedTag(null);
     }
   }, [availableTags, selectedTag]);
+
+  useEffect(() => {
+    if (selectedTaskId && !visibleTasks.some((task) => task.id === selectedTaskId)) {
+      setSelectedTaskId(null);
+    }
+  }, [selectedTaskId, visibleTasks]);
 
   function addTodayTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -288,7 +299,7 @@ function App() {
           </div>
         </header>
 
-        <section className="grid flex-1 gap-5 py-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <section className="grid flex-1 gap-5 py-5 xl:grid-cols-[300px_minmax(0,1fr)_360px]">
           <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
             <section className="planner-panel planner-animate planner-delay-1 p-3">
               <nav aria-label="任务视图" className="space-y-1">
@@ -418,11 +429,13 @@ function App() {
                 {visibleTasks.map((task) => (
                   <TaskRow
                     key={task.id}
+                    isSelected={selectedTaskId === task.id}
                     task={task}
                     onComplete={completeTask}
                     onChangePriority={updateTaskPriority}
                     onDelete={deleteTask}
                     onMoveToToday={moveToToday}
+                    onOpenDetails={setSelectedTaskId}
                     onSave={saveTaskEdits}
                   />
                 ))}
@@ -431,6 +444,15 @@ function App() {
               <EmptyState view={view} />
             )}
           </section>
+
+          <TaskDetailPanel
+            task={selectedTask}
+            onChangePriority={updateTaskPriority}
+            onClearSelection={() => setSelectedTaskId(null)}
+            onComplete={completeTask}
+            onDelete={deleteTask}
+            onMoveToToday={moveToToday}
+          />
         </section>
       </div>
     </main>
@@ -596,11 +618,13 @@ function TagFilterButton({
 }
 
 type TaskRowProps = {
+  isSelected: boolean;
   task: Task;
   onComplete: (taskId: string) => void;
   onChangePriority: (taskId: string, priority: TaskPriority) => void;
   onDelete: (taskId: string) => void;
   onMoveToToday: (taskId: string) => void;
+  onOpenDetails: (taskId: string) => void;
   onSave: (
     taskId: string,
     updates: {
@@ -618,11 +642,13 @@ function formatTaskTitleDraft(task: Task): string {
 }
 
 function TaskRow({
+  isSelected,
   task,
   onComplete,
   onChangePriority,
   onDelete,
   onMoveToToday,
+  onOpenDetails,
   onSave,
 }: TaskRowProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -679,7 +705,12 @@ function TaskRow({
   }
 
   return (
-    <li className="task-row-shell px-5 py-5 sm:px-7">
+    <li
+      className={cn(
+        "task-row-shell px-5 py-5 transition-colors sm:px-7",
+        isSelected && "bg-foreground/[0.03]",
+      )}
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <button
           aria-label={`完成 ${task.title}`}
@@ -789,19 +820,30 @@ function TaskRow({
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p
-                    className={cn(
-                      "break-words text-[1.2rem] font-medium leading-tight tracking-[-0.04em] sm:text-[1.35rem]",
-                      task.status === "done" && "text-muted-foreground line-through",
-                    )}
+                  <button
+                    aria-label={`查看 ${task.title} 详情`}
+                    className="w-full rounded-[1.25rem] p-1 text-left transition-colors hover:bg-background/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => onOpenDetails(task.id)}
+                    type="button"
                   >
-                    {task.title}
-                  </p>
-                  {task.details ? (
-                    <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground sm:text-[0.95rem]">
-                      {task.details}
+                    <p
+                      className={cn(
+                        "break-words text-[1.2rem] font-medium leading-tight tracking-[-0.04em] sm:text-[1.35rem]",
+                        task.status === "done" && "text-muted-foreground line-through",
+                      )}
+                    >
+                      {task.title}
                     </p>
-                  ) : null}
+                    {task.details ? (
+                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground sm:text-[0.95rem]">
+                        {task.details}
+                      </p>
+                    ) : (
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        查看时间、标签和备注详情
+                      </p>
+                    )}
+                  </button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -935,6 +977,227 @@ function PriorityBadge({ priority }: { priority: TaskPriority }) {
       {label}
     </span>
   );
+}
+
+type TaskDetailPanelProps = {
+  task: Task | null;
+  onChangePriority: (taskId: string, priority: TaskPriority) => void;
+  onClearSelection: () => void;
+  onComplete: (taskId: string) => void;
+  onDelete: (taskId: string) => void;
+  onMoveToToday: (taskId: string) => void;
+};
+
+function TaskDetailPanel({
+  task,
+  onChangePriority,
+  onClearSelection,
+  onComplete,
+  onDelete,
+  onMoveToToday,
+}: TaskDetailPanelProps) {
+  return (
+    <aside
+      aria-label="任务详情侧栏"
+      className="planner-panel planner-animate planner-delay-2 overflow-hidden xl:sticky xl:top-4 xl:self-start"
+    >
+      {task ? (
+        <div className="flex h-full flex-col">
+          <div className="border-b border-border/70 px-5 py-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                  Detail
+                </p>
+                <h3 className="font-display mt-3 text-3xl tracking-[-0.05em]">
+                  {task.title}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  点击任务后，在这里集中查看备注、时间和当前状态。
+                </p>
+              </div>
+              <Button
+                aria-label="收起详情"
+                className="rounded-full"
+                onClick={onClearSelection}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <X className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <PriorityBadge priority={task.priority} />
+              {task.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-border/70 bg-background/75 px-3 py-1 text-xs font-medium text-muted-foreground"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-1 flex-col gap-5 px-5 py-5">
+            <section className="rounded-[1.5rem] border border-border/70 bg-background/65 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                备注
+              </p>
+              <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                {task.details || "还没有补充说明。"}
+              </p>
+            </section>
+
+            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <DetailMetric
+                icon={<CalendarDays className="size-4" aria-hidden="true" />}
+                label="归属日期"
+                value={formatScheduledDate(task.scheduledFor)}
+              />
+              <DetailMetric
+                icon={<Clock3 className="size-4" aria-hidden="true" />}
+                label="当天时间"
+                value={task.scheduledTime ?? "暂未安排"}
+              />
+              <DetailMetric
+                icon={<ListChecks className="size-4" aria-hidden="true" />}
+                label="状态"
+                value={getTaskStatusLabel(task)}
+              />
+              <DetailMetric
+                icon={<CalendarDays className="size-4" aria-hidden="true" />}
+                label="创建于"
+                value={formatTimestamp(task.createdAt)}
+              />
+            </section>
+
+            <section className="rounded-[1.5rem] border border-border/70 bg-background/65 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                快速调整
+              </p>
+              <div className="mt-4">
+                <PrioritySelect
+                  ariaLabel={`设置 ${task.title} 的优先级`}
+                  className="w-full rounded-[1rem] border-border/70 bg-card/70"
+                  onChange={(priority) => onChangePriority(task.id, priority)}
+                  value={task.priority}
+                />
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {task.status !== "done" ? (
+                  <Button
+                    className="rounded-full bg-foreground text-background hover:bg-foreground/90"
+                    onClick={() => onComplete(task.id)}
+                    size="sm"
+                    type="button"
+                  >
+                    <Check className="size-4" aria-hidden="true" />
+                    完成
+                  </Button>
+                ) : null}
+                {task.status !== "today" ? (
+                  <Button
+                    className="rounded-full border-border/80 bg-background/70"
+                    onClick={() => onMoveToToday(task.id)}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <RotateCcw className="size-4" aria-hidden="true" />
+                    移到今天
+                  </Button>
+                ) : null}
+                <Button
+                  className="rounded-full"
+                  onClick={() => onDelete(task.id)}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  删除
+                </Button>
+              </div>
+            </section>
+          </div>
+        </div>
+      ) : (
+        <div className="flex min-h-[320px] items-center justify-center px-6 py-10 text-center">
+          <div className="max-w-xs">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-border/70 bg-background/75 text-foreground">
+              <ListChecks className="size-5" aria-hidden="true" />
+            </div>
+            <h3 className="font-display mt-5 text-2xl tracking-[-0.04em]">
+              选中一个 TODO
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              点击列表里的任务后，右侧会显示它的备注、时间、标签和当前状态。
+            </p>
+          </div>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function DetailMetric({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-border/70 bg-background/65 p-4">
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function getTaskStatusLabel(task: Task) {
+  if (task.status === "done") {
+    return task.completedAt ? `已完成 · ${formatTimestamp(task.completedAt)}` : "已完成";
+  }
+
+  return task.status === "today" ? "今日" : "收件箱";
+}
+
+function formatScheduledDate(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    day: "numeric",
+    month: "long",
+    weekday: "short",
+  }).format(date);
+}
+
+function formatTimestamp(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "numeric",
+  }).format(date);
 }
 
 function EmptyState({ view }: { view: View }) {

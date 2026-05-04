@@ -94,6 +94,33 @@ describe("App", () => {
     expect(screen.getByText("14:30")).toBeTruthy();
   });
 
+  it("opens a side detail panel when a task is selected", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.type(screen.getByLabelText("待办标题"), "准备发布说明 #发布");
+    await user.type(screen.getByLabelText("当天时间"), "14:30");
+    await user.type(
+      screen.getByLabelText("待办详情"),
+      "补充变更摘要\n列出回滚方案",
+    );
+    await user.click(screen.getByRole("button", { name: "添加今日待办" }));
+
+    expect(screen.getByText("选中一个 TODO")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "查看 准备发布说明 详情" }));
+
+    const detailPanel = screen.getByLabelText("任务详情侧栏");
+    expect(within(detailPanel).getByRole("heading", { name: "准备发布说明" })).toBeTruthy();
+    expect(within(detailPanel).getByText("14:30")).toBeTruthy();
+    expect(
+      within(detailPanel).getByText(/补充变更摘要\s+列出回滚方案/u),
+    ).toBeTruthy();
+    expect(within(detailPanel).getByText("今日")).toBeTruthy();
+    expect(within(detailPanel).getByText("#发布")).toBeTruthy();
+  });
+
   it("supports setting and updating task priority", async () => {
     const user = userEvent.setup();
 
