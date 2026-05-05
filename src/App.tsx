@@ -435,7 +435,6 @@ function App() {
 
           <TaskDetailPanel
             task={selectedTask}
-            onChangePriority={updateTaskPriority}
             onClearSelection={() => setSelectedTaskId(null)}
             onComplete={completeTask}
             onDelete={deleteTask}
@@ -803,7 +802,6 @@ function PriorityBadge({ priority }: { priority: TaskPriority }) {
 
 type TaskDetailPanelProps = {
   task: Task | null;
-  onChangePriority: (taskId: string, priority: TaskPriority) => void;
   onClearSelection: () => void;
   onComplete: (taskId: string) => void;
   onDelete: (taskId: string) => void;
@@ -822,7 +820,6 @@ type TaskDetailPanelProps = {
 
 function TaskDetailPanel({
   task,
-  onChangePriority,
   onClearSelection,
   onComplete,
   onDelete,
