@@ -660,7 +660,7 @@ function TaskRow({
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 lg:w-[220px] lg:flex-col lg:items-end">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               <div className="relative">
                 <button
                   ref={priorityTriggerRef}
