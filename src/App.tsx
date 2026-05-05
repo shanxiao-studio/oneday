@@ -1,5 +1,5 @@
 import {
-  FormEvent,
+  type FormEvent,
   type ReactNode,
   useEffect,
   useMemo,
@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createTaggedTask,
@@ -69,14 +70,6 @@ const priorityOptions: Array<{ value: TaskPriority; label: string }> = [
   { value: "medium", label: "中优先级" },
   { value: "low", label: "低优先级" },
 ];
-
-const priorityBadgeClassNames: Record<TaskPriority, string> = {
-  high:
-    "border border-zinc-950 bg-zinc-950 text-white dark:border-white dark:bg-white dark:text-zinc-950",
-  medium:
-    "border border-zinc-300 bg-zinc-200/90 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100",
-  low: "border border-border/80 bg-background/90 text-muted-foreground dark:bg-zinc-900/80",
-};
 
 function getStoredTheme(): Theme {
   const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
@@ -584,6 +577,12 @@ function formatTaskTitleDraft(task: Task): string {
   return [task.title, ...task.tags.map((tag) => `#${tag}`)].join(" ").trim();
 }
 
+const priorityIconClassNames: Record<TaskPriority, string> = {
+  high: "text-foreground",
+  medium: "text-muted-foreground",
+  low: "text-muted-foreground/50",
+};
+
 function TaskRow({
   isSelected,
   task,
@@ -594,6 +593,8 @@ function TaskRow({
   onOpenDetails,
 }: TaskRowProps) {
   const [editField, setEditField] = useState<RowEditField>(null);
+  const priorityTriggerRef = useRef<HTMLButtonElement>(null);
+  const timeTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setEditField(null);
@@ -660,51 +661,111 @@ function TaskRow({
             </div>
 
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 lg:w-[220px] lg:flex-col lg:items-end">
-              {editField === "priority" ? (
-                <PrioritySelect
-                  ariaLabel={`设置 ${task.title} 的优先级`}
-                  className="w-full border-border/70 bg-card/70 lg:w-[180px]"
-                  onChange={(priority) => {
-                    onChangePriority(task.id, priority);
-                    setEditField(null);
-                  }}
-                  value={task.priority}
-                />
-              ) : (
-                <MetaPillButton
-                  ariaLabel={`编辑 ${task.title} 的优先级`}
-                  icon={<Flag className="size-3.5" aria-hidden="true" />}
-                  onClick={() => setEditField("priority")}
+              <div className="relative">
+                <button
+                  ref={priorityTriggerRef}
+                  aria-label={`编辑 ${task.title} 的优先级，当前${getPriorityLabel(task.priority)}`}
+                  className={cn(
+                    "flex size-9 items-center justify-center border border-border/70 bg-background/80 transition-colors hover:border-foreground/25 hover:bg-background",
+                    editField === "priority" && "border-foreground/30 bg-background",
+                  )}
+                  onClick={() => setEditField(editField === "priority" ? null : "priority")}
+                  type="button"
                 >
-                  {getPriorityLabel(task.priority)}
-                </MetaPillButton>
-              )}
-
-              {editField === "time" ? (
-                <div className="flex h-10 w-full items-center gap-2 border border-border/70 bg-card/70 px-3 lg:w-[180px]">
-                  <Clock3 className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                  <label className="sr-only" htmlFor={`task-time-${task.id}`}>
-                    设置 {task.title} 的时间
-                  </label>
-                  <Input
-                    autoFocus
-                    id={`task-time-${task.id}`}
-                    className="h-auto border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
-                    onBlur={() => setEditField(null)}
-                    onChange={(event) => onChangeTime(task.id, event.target.value)}
-                    type="time"
-                    value={task.scheduledTime ?? ""}
+                  <Flag
+                    className={cn("size-4", priorityIconClassNames[task.priority])}
+                    aria-hidden="true"
                   />
-                </div>
-              ) : (
-                <MetaPillButton
-                  ariaLabel={`编辑 ${task.title} 的时间`}
-                  icon={<Clock3 className="size-3.5" aria-hidden="true" />}
-                  onClick={() => setEditField("time")}
+                </button>
+                <Popover
+                  open={editField === "priority"}
+                  triggerRef={priorityTriggerRef}
+                  onClose={() => setEditField(null)}
+                  className="min-w-[180px] p-1"
                 >
-                  {task.scheduledTime || "未安排"}
-                </MetaPillButton>
-              )}
+                  <div className="flex flex-col gap-0.5">
+                    {priorityOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 text-sm transition-colors hover:bg-muted",
+                          option.value === task.priority && "bg-muted font-medium text-foreground",
+                          option.value !== task.priority && "text-muted-foreground",
+                        )}
+                        onClick={() => {
+                          onChangePriority(task.id, option.value);
+                          setEditField(null);
+                        }}
+                        type="button"
+                      >
+                        <Flag
+                          className={cn("size-4", priorityIconClassNames[option.value])}
+                          aria-hidden="true"
+                        />
+                        <span>{option.label}</span>
+                        {option.value === task.priority ? (
+                          <Check className="ml-auto size-3.5" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                </Popover>
+              </div>
+
+              <div className="relative">
+                <button
+                  ref={timeTriggerRef}
+                  aria-label={`编辑 ${task.title} 的时间${task.scheduledTime ? `，当前${task.scheduledTime}` : "，暂未安排"}`}
+                  className={cn(
+                    "flex size-9 items-center justify-center border border-border/70 bg-background/80 transition-colors hover:border-foreground/25 hover:bg-background",
+                    editField === "time" && "border-foreground/30 bg-background",
+                  )}
+                  onClick={() => setEditField(editField === "time" ? null : "time")}
+                  type="button"
+                >
+                  <Clock3
+                    className={cn(
+                      "size-4",
+                      task.scheduledTime ? "text-foreground" : "text-muted-foreground",
+                    )}
+                    aria-hidden="true"
+                  />
+                </button>
+                <Popover
+                  open={editField === "time"}
+                  triggerRef={timeTriggerRef}
+                  onClose={() => setEditField(null)}
+                  className="p-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock3 className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <label className="sr-only" htmlFor={`task-time-${task.id}`}>
+                      设置 {task.title} 的时间
+                    </label>
+                    <Input
+                      autoFocus
+                      id={`task-time-${task.id}`}
+                      className="h-9 w-36 border-border/70 bg-card/70 text-sm"
+                      onChange={(event) => onChangeTime(task.id, event.target.value)}
+                      type="time"
+                      value={task.scheduledTime ?? ""}
+                    />
+                    {task.scheduledTime ? (
+                      <button
+                        aria-label={`清除 ${task.title} 的时间`}
+                        className="flex size-7 items-center justify-center border border-border/70 text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          onChangeTime(task.id, "");
+                          setEditField(null);
+                        }}
+                        type="button"
+                      >
+                        <X className="size-3" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
+                </Popover>
+              </div>
 
               {task.status !== "today" ? (
                 <Button
@@ -723,32 +784,6 @@ function TaskRow({
         </div>
       </div>
     </li>
-  );
-}
-
-function MetaPillButton({
-  ariaLabel,
-  children,
-  icon,
-  onClick,
-}: {
-  ariaLabel: string;
-  children: ReactNode;
-  icon: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      aria-label={ariaLabel}
-      className="inline-flex h-9 items-center gap-2 border border-border/70 bg-background/80 px-3 text-sm text-foreground transition-colors hover:border-foreground/25 hover:bg-background lg:min-w-[140px] lg:justify-between"
-      onClick={onClick}
-      type="button"
-    >
-      <span className="flex items-center gap-2">
-        <span className="text-muted-foreground">{icon}</span>
-        <span>{children}</span>
-      </span>
-    </button>
   );
 }
 
@@ -803,19 +838,6 @@ function PrioritySelect({
   );
 }
 
-function PriorityBadge({ priority }: { priority: TaskPriority }) {
-  return (
-    <span
-      className={cn(
-        "px-3 py-1 text-xs font-medium",
-        priorityBadgeClassNames[priority],
-      )}
-    >
-      {getPriorityLabel(priority)}
-    </span>
-  );
-}
-
 type TaskDetailPanelProps = {
   task: Task | null;
   onClearSelection: () => void;
@@ -850,6 +872,8 @@ function TaskDetailPanel({
   const [editField, setEditField] = useState<DetailEditField>(null);
   const parsedTitleDraft = parseTaskDraft(titleDraft);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const detailPriorityTriggerRef = useRef<HTMLButtonElement>(null);
+  const detailTimeTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!task) {
@@ -921,52 +945,111 @@ function TaskDetailPanel({
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
-              {editField === "priority" ? (
-                <PrioritySelect
-                  ariaLabel="详情优先级"
-                  className="w-full border-border/70 bg-card/70 sm:w-40"
-                  onChange={(priority) => {
-                    setPriorityDraft(priority);
-                    setEditField(null);
-                  }}
-                  value={priorityDraft}
-                />
-              ) : (
+              <div className="relative">
                 <button
-                  aria-label="编辑优先级"
-                  className="border border-border/70 bg-background/75 px-1 py-1"
-                  onClick={() => setEditField("priority")}
+                  ref={detailPriorityTriggerRef}
+                  aria-label={`编辑优先级，当前${getPriorityLabel(priorityDraft)}`}
+                  className={cn(
+                    "flex size-9 items-center justify-center border border-border/70 bg-background/80 transition-colors hover:border-foreground/25 hover:bg-background",
+                    editField === "priority" && "border-foreground/30 bg-background",
+                  )}
+                  onClick={() => setEditField(editField === "priority" ? null : "priority")}
                   type="button"
                 >
-                  <PriorityBadge priority={priorityDraft} />
-                </button>
-              )}
-
-              {editField === "time" ? (
-                <div className="flex h-10 items-center gap-2 border border-border/70 bg-card/70 px-3 sm:w-36">
-                  <Clock3 className="size-4 text-muted-foreground" aria-hidden="true" />
-                  <label className="sr-only" htmlFor="detail-task-time">
-                    详情时间
-                  </label>
-                  <Input
-                    autoFocus
-                    id="detail-task-time"
-                    className="h-auto border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
-                    onBlur={() => setEditField(null)}
-                    onChange={(event) => setScheduledTimeDraft(event.target.value)}
-                    type="time"
-                    value={scheduledTimeDraft}
+                  <Flag
+                    className={cn("size-4", priorityIconClassNames[priorityDraft])}
+                    aria-hidden="true"
                   />
-                </div>
-              ) : (
-                <MetaPillButton
-                  ariaLabel="编辑时间"
-                  icon={<Clock3 className="size-3.5" aria-hidden="true" />}
-                  onClick={() => setEditField("time")}
+                </button>
+                <Popover
+                  open={editField === "priority"}
+                  triggerRef={detailPriorityTriggerRef}
+                  onClose={() => setEditField(null)}
+                  className="min-w-[180px] p-1"
                 >
-                  {scheduledTimeDraft || "未安排"}
-                </MetaPillButton>
-              )}
+                  <div className="flex flex-col gap-0.5">
+                    {priorityOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 text-sm transition-colors hover:bg-muted",
+                          option.value === priorityDraft && "bg-muted font-medium text-foreground",
+                          option.value !== priorityDraft && "text-muted-foreground",
+                        )}
+                        onClick={() => {
+                          setPriorityDraft(option.value);
+                          setEditField(null);
+                        }}
+                        type="button"
+                      >
+                        <Flag
+                          className={cn("size-4", priorityIconClassNames[option.value])}
+                          aria-hidden="true"
+                        />
+                        <span>{option.label}</span>
+                        {option.value === priorityDraft ? (
+                          <Check className="ml-auto size-3.5" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                </Popover>
+              </div>
+
+              <div className="relative">
+                <button
+                  ref={detailTimeTriggerRef}
+                  aria-label={`编辑时间${scheduledTimeDraft ? `，当前${scheduledTimeDraft}` : "，暂未安排"}`}
+                  className={cn(
+                    "flex size-9 items-center justify-center border border-border/70 bg-background/80 transition-colors hover:border-foreground/25 hover:bg-background",
+                    editField === "time" && "border-foreground/30 bg-background",
+                  )}
+                  onClick={() => setEditField(editField === "time" ? null : "time")}
+                  type="button"
+                >
+                  <Clock3
+                    className={cn(
+                      "size-4",
+                      scheduledTimeDraft ? "text-foreground" : "text-muted-foreground",
+                    )}
+                    aria-hidden="true"
+                  />
+                </button>
+                <Popover
+                  open={editField === "time"}
+                  triggerRef={detailTimeTriggerRef}
+                  onClose={() => setEditField(null)}
+                  className="p-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock3 className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <label className="sr-only" htmlFor="detail-task-time">
+                      详情时间
+                    </label>
+                    <Input
+                      autoFocus
+                      id="detail-task-time"
+                      className="h-9 w-36 border-border/70 bg-card/70 text-sm"
+                      onChange={(event) => setScheduledTimeDraft(event.target.value)}
+                      type="time"
+                      value={scheduledTimeDraft}
+                    />
+                    {scheduledTimeDraft ? (
+                      <button
+                        aria-label="清除时间"
+                        className="flex size-7 items-center justify-center border border-border/70 text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setScheduledTimeDraft("");
+                          setEditField(null);
+                        }}
+                        type="button"
+                      >
+                        <X className="size-3" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
+                </Popover>
+              </div>
 
               <button
                 aria-label="编辑标签"
