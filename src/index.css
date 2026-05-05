@@ -67,17 +67,21 @@
   body {
     @apply bg-background text-foreground antialiased;
     background-image:
-      radial-gradient(circle at top, rgba(255, 255, 255, 0.95), transparent 34%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.7), transparent 20%, transparent 80%, rgba(255, 255, 255, 0.45)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.4)),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
       linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+    background-size: auto, 24px 24px, 24px 24px, auto;
     font-family: var(--font-body);
   }
 
   html.dark body {
     background-image:
-      radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 30%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 18%, transparent 82%, rgba(255, 255, 255, 0.02)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
       linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+    background-size: auto, 24px 24px, 24px 24px, auto;
   }
 
   ::selection {
@@ -89,20 +93,6 @@
   .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.05em;
-  }
-
-  .planner-panel {
-    @apply border border-border/70 bg-card backdrop-blur-md;
-    box-shadow:
-      0 20px 60px rgba(15, 23, 42, 0.05),
-      inset 0 1px 0 rgba(255, 255, 255, 0.42);
-    background-color: hsl(var(--card) / 0.78);
-  }
-
-  .dark .planner-panel {
-    box-shadow:
-      0 24px 80px rgba(0, 0, 0, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .planner-animate {
@@ -119,13 +109,12 @@
 
   .task-row-shell {
     transition:
-      transform 180ms ease,
-      background-color 180ms ease;
+      background-color 180ms ease,
+      border-color 180ms ease;
   }
 
   .task-row-shell:hover {
-    background-color: hsl(var(--background) / 0.68);
-    transform: translateY(-1px);
+    background-color: hsl(var(--background) / 0.8);
   }
 }
 
