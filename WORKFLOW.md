@@ -47,4 +47,14 @@ hooks:
     git fetch origin
     git status
 ---
-你正在处理 Linear issue：ID {{ issue.identifier }}，请在当前工作区完成任务。
+你正在处理 Linear issue：
+
+- ID: {{ issue.identifier }}
+- 标题: {{ issue.title }}
+- 状态: {{ issue.state }}
+- URL: {{ issue.url }}
+
+描述：
+{{ issue.description }}
+
+请在当前工作区完成任务。
