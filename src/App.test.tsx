@@ -90,7 +90,9 @@ describe("App", () => {
 
     const addedTask = screen.getByText("准备发布说明").closest("li");
     expect(addedTask).toBeTruthy();
-    expect(within(addedTask!).getByText("14:30")).toBeTruthy();
+    expect(
+      within(addedTask!).getByRole("button", { name: /编辑 准备发布说明 的时间.*14:30/ }),
+    ).toBeTruthy();
 
     const detailPanel = screen.getByLabelText("任务详情侧栏");
     expect(within(detailPanel).getByDisplayValue("准备发布说明 #发布")).toBeTruthy();
@@ -146,13 +148,17 @@ describe("App", () => {
     expect(taskItems[0].textContent).toContain("高优先级任务");
     expect(taskItems[1].textContent).toContain("低优先级任务");
 
-    await user.click(screen.getByRole("button", { name: "编辑 低优先级任务 的优先级" }));
+    await user.click(
+      screen.getByRole("button", { name: "编辑 低优先级任务 的优先级，当前低优先级" }),
+    );
 
-    const lowPrioritySelect = screen.getByLabelText("设置 低优先级任务 的优先级");
-    await user.selectOptions(lowPrioritySelect, "medium");
+    await user.click(screen.getByRole("button", { name: "中优先级" }));
 
-    expect(lowPrioritySelect).toHaveProperty("value", "medium");
-    expect(screen.getAllByText("中优先级").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("button", {
+        name: "编辑 低优先级任务 的优先级，当前中优先级",
+      }),
+    ).toBeTruthy();
   });
 
   it("edits task fields directly from the detail panel", async () => {
@@ -174,11 +180,15 @@ describe("App", () => {
     await user.clear(titleInput);
     await user.type(titleInput, "更新周报 #复盘");
 
-    await user.click(within(detailPanel).getByRole("button", { name: "编辑优先级" }));
-    await user.selectOptions(within(detailPanel).getByLabelText("详情优先级"), "high");
+    await user.click(
+      within(detailPanel).getByRole("button", { name: "编辑优先级，当前低优先级" }),
+    );
+    await user.click(screen.getByRole("button", { name: "高优先级" }));
 
-    await user.click(within(detailPanel).getByRole("button", { name: "编辑时间" }));
-    const timeInput = within(detailPanel).getByLabelText("详情时间");
+    await user.click(
+      within(detailPanel).getByRole("button", { name: "编辑时间，当前09:30" }),
+    );
+    const timeInput = screen.getByLabelText("详情时间");
     await user.clear(timeInput);
     await user.type(timeInput, "16:45");
 
@@ -195,8 +205,12 @@ describe("App", () => {
     expect(within(updatedTask!).getByText("补充阻塞项")).toBeTruthy();
     expect(within(updatedTask!).getByText("#复盘")).toBeTruthy();
     expect(screen.queryByText("#工作")).toBeNull();
-    expect(within(updatedTask!).getByText("16:45")).toBeTruthy();
-    expect(within(detailPanel).getByText("高优先级")).toBeTruthy();
+    expect(
+      within(updatedTask!).getByRole("button", { name: /编辑 更新周报 的时间.*16:45/ }),
+    ).toBeTruthy();
+    expect(
+      within(detailPanel).getByRole("button", { name: "编辑优先级，当前高优先级" }),
+    ).toBeTruthy();
     expect(within(detailPanel).getByDisplayValue(updatedScheduledFor)).toBeTruthy();
 
     const tagRegion = screen.getByRole("region", { name: "标签筛选" });
