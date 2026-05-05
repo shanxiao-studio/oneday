@@ -76,7 +76,7 @@ describe("App", () => {
     expect(screen.queryByText("买菜")).toBeTruthy();
   });
 
-  it("keeps notes out of the add form and shows same-day time in the task list", async () => {
+  it("adds a task with compact metadata controls and opens it in the detail panel", async () => {
     const user = userEvent.setup();
 
     render(<App />);
@@ -87,14 +87,18 @@ describe("App", () => {
     await user.type(screen.getByLabelText("当天时间"), "14:30");
     await user.click(screen.getByRole("button", { name: "添加今日待办" }));
 
-    expect(screen.getByText("准备发布说明")).toBeTruthy();
-    expect(screen.getByText("14:30")).toBeTruthy();
-    expect(screen.getByText("查看时间、标签和备注详情")).toBeTruthy();
+    const addedTask = screen.getByText("准备发布说明").closest("li");
+    expect(addedTask).toBeTruthy();
+    expect(within(addedTask!).getByText("14:30")).toBeTruthy();
+
+    const detailPanel = screen.getByLabelText("任务详情侧栏");
+    expect(within(detailPanel).getByDisplayValue("准备发布说明 #发布")).toBeTruthy();
+    expect(within(detailPanel).getByText("14:30")).toBeTruthy();
+    expect(within(detailPanel).getByLabelText("待办详情")).toBeTruthy();
   });
 
-  it("opens a side detail panel with editable task fields", async () => {
+  it("opens a side detail panel when a task is selected", async () => {
     const user = userEvent.setup();
-    const todayKey = getTodayKey();
 
     render(<App />);
 
@@ -102,17 +106,12 @@ describe("App", () => {
     await user.type(screen.getByLabelText("当天时间"), "14:30");
     await user.click(screen.getByRole("button", { name: "添加今日待办" }));
 
-    expect(screen.getByText("选中一个 TODO")).toBeTruthy();
-
-    await user.click(screen.getByRole("button", { name: "查看 准备发布说明 详情" }));
-
     const detailPanel = screen.getByLabelText("任务详情侧栏");
     expect(within(detailPanel).getByDisplayValue("准备发布说明 #发布")).toBeTruthy();
-    expect(within(detailPanel).getByDisplayValue("14:30")).toBeTruthy();
-    expect(within(detailPanel).getByDisplayValue(todayKey)).toBeTruthy();
-    expect(within(detailPanel).getByLabelText("待办详情")).toBeTruthy();
+    expect(within(detailPanel).getByText("14:30")).toBeTruthy();
     expect(within(detailPanel).getByText("今日")).toBeTruthy();
     expect(within(detailPanel).getByText("#发布")).toBeTruthy();
+    expect(within(detailPanel).getByLabelText("待办详情")).toBeTruthy();
   });
 
   it("supports setting and updating task priority", async () => {
@@ -132,20 +131,14 @@ describe("App", () => {
     expect(taskItems[0].textContent).toContain("高优先级任务");
     expect(taskItems[1].textContent).toContain("低优先级任务");
 
-    await user.click(screen.getByRole("button", { name: "查看 低优先级任务 详情" }));
-
-    const detailPanel = screen.getByLabelText("任务详情侧栏");
-    const detailPrioritySelect = within(detailPanel).getByLabelText("优先级");
-    await user.selectOptions(detailPrioritySelect, "medium");
-    await user.click(within(detailPanel).getByRole("button", { name: "保存" }));
-
     const lowPrioritySelect = screen.getByLabelText("设置 低优先级任务 的优先级");
+    await user.selectOptions(lowPrioritySelect, "medium");
 
     expect(lowPrioritySelect).toHaveProperty("value", "medium");
     expect(screen.getAllByText("中优先级").length).toBeGreaterThan(0);
   });
 
-  it("edits an existing task title, tags, details, date, priority, and time from the detail panel", async () => {
+  it("edits task fields directly from the detail panel", async () => {
     const user = userEvent.setup();
     const initialScheduledFor = getTodayKey();
     const updatedScheduledFor = "2026-05-04";
@@ -164,7 +157,7 @@ describe("App", () => {
     await user.clear(titleInput);
     await user.type(titleInput, "更新周报 #复盘");
 
-    await user.selectOptions(within(detailPanel).getByLabelText("优先级"), "high");
+    await user.selectOptions(within(detailPanel).getByLabelText("详情优先级"), "high");
 
     const timeInput = within(detailPanel).getByDisplayValue("09:30");
     await user.clear(timeInput);
@@ -174,10 +167,9 @@ describe("App", () => {
     await user.clear(dateInput);
     await user.type(dateInput, updatedScheduledFor);
 
-    const detailInput = within(detailPanel).getByLabelText("待办详情");
-    await user.type(detailInput, "补充阻塞项");
+    await user.type(within(detailPanel).getByLabelText("待办详情"), "补充阻塞项");
 
-    await user.click(within(detailPanel).getByRole("button", { name: "保存" }));
+    await user.click(within(detailPanel).getByRole("button", { name: "保存修改" }));
 
     const updatedTask = screen.getByText("更新周报").closest("li");
 
@@ -206,8 +198,9 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.queryByText("日终")).toBeNull();
-    expect(screen.getByRole("heading", { name: "OneDay" })).toBeTruthy();
-    expect(screen.getByText("明日复明日，明日何其多。")).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "明日复明日，明日何其多" }),
+    ).toBeTruthy();
     expect(document.documentElement.classList.contains("dark")).toBe(false);
 
     await user.click(screen.getByRole("button", { name: "切换到暗色主题" }));

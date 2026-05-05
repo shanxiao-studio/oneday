@@ -132,6 +132,7 @@ function App() {
     () => visibleTasks.find((task) => task.id === selectedTaskId) ?? null,
     [selectedTaskId, visibleTasks],
   );
+  const nextFocusTask = todayTasks.find((task) => task.scheduledTime) ?? todayTasks[0];
 
   useEffect(() => {
     if (selectedTag && !availableTags.includes(selectedTag)) {
@@ -152,17 +153,18 @@ function App() {
       return;
     }
 
-    setTasks((current) => [
-      createTaggedTask(draft, {
-        priority: draftPriority,
-        scheduledFor: todayKey,
-        scheduledTime: timeDraft,
-      }),
-      ...current,
-    ]);
+    const newTask = createTaggedTask(draft, {
+      priority: draftPriority,
+      scheduledFor: todayKey,
+      scheduledTime: timeDraft,
+    });
+
+    setTasks((current) => [newTask, ...current]);
     setDraft("");
     setDraftPriority("medium");
     setTimeDraft("");
+    setSelectedTag(null);
+    setSelectedTaskId(newTask.id);
     setView("today");
   }
 
@@ -224,41 +226,80 @@ function App() {
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.96),_rgba(255,255,255,0.2)_34%,_transparent_64%),linear-gradient(180deg,_rgba(255,255,255,0.78),_transparent_22%,_transparent_78%,_rgba(255,255,255,0.5)),linear-gradient(90deg,_rgba(15,23,42,0.04)_1px,_transparent_1px),linear-gradient(180deg,_rgba(15,23,42,0.035)_1px,_transparent_1px)] bg-[size:auto,auto,32px_32px,32px_32px]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/8 via-transparent to-transparent dark:from-white/8" />
-      <header className="fixed inset-x-0 top-0 z-30 border-b border-border/80 bg-background/92 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-[1520px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="min-w-0">
-            <h1 className="font-display text-2xl tracking-[-0.08em] sm:text-[1.75rem]">
-              OneDay
-            </h1>
-            <p className="mt-1 truncate text-xs text-muted-foreground sm:text-sm">
-              明日复明日，明日何其多。
-            </p>
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1520px] flex-col px-4 py-4 sm:px-6 lg:px-8">
+        <header className="planner-panel planner-animate overflow-hidden px-5 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
+            <div className="max-w-4xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.36em] text-muted-foreground">
+                oneday / daily desk
+              </p>
+              <h1 className="font-display mt-4 max-w-3xl text-4xl leading-[0.92] sm:text-5xl lg:text-[5.4rem]">
+                明日复明日，明日何其多
+              </h1>
+              <p className="mt-5 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                只留下今天真正要做的事。今天、收件箱、已完成同桌切换，视线更安静，决策更直接。
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="rounded-full border border-border/80 bg-background/70 px-3 py-1.5">
+                  Today {todayKey}
+                </span>
+                <span className="rounded-full border border-border/80 bg-background/70 px-3 py-1.5">
+                  {viewCopy[view].title}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 self-start lg:self-auto">
+              <div className="rounded-[2rem] border border-border/80 bg-background/75 p-4 backdrop-blur-xl">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
+                      Focus
+                    </p>
+                    <p className="mt-3 text-4xl font-semibold tracking-[-0.06em] text-foreground sm:text-5xl">
+                      {todayTasks.length}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {nextFocusTask
+                        ? nextFocusTask.scheduledTime
+                          ? "已安排时间"
+                          : "下一项已就位"
+                        : "先写下第一件事"}
+                    </p>
+                  </div>
+                  <Button
+                    aria-label={theme === "dark" ? "切换到浅色主题" : "切换到暗色主题"}
+                    className="rounded-full border-border/80 bg-background/80"
+                    onClick={() =>
+                      setTheme((currentTheme) =>
+                        currentTheme === "dark" ? "light" : "dark",
+                      )
+                    }
+                    size="icon"
+                    type="button"
+                    variant="outline"
+                  >
+                    {theme === "dark" ? (
+                      <Sun className="size-4" aria-hidden="true" />
+                    ) : (
+                      <Moon className="size-4" aria-hidden="true" />
+                    )}
+                  </Button>
+                </div>
+                <div className="mt-6 grid grid-cols-3 gap-3 text-sm">
+                  <MetricTile label="今日" value={todayTasks.length} />
+                  <MetricTile label="收件箱" value={inboxTasks.length} />
+                  <MetricTile label="已完成" value={doneTasks.length} />
+                </div>
+              </div>
+            </div>
           </div>
-          <Button
-            aria-label={theme === "dark" ? "切换到浅色主题" : "切换到暗色主题"}
-            className="border-border/80 bg-background/80"
-            onClick={() =>
-              setTheme((currentTheme) =>
-                currentTheme === "dark" ? "light" : "dark",
-              )
-            }
-            size="icon"
-            type="button"
-            variant="outline"
-          >
-            {theme === "dark" ? (
-              <Sun className="size-4" aria-hidden="true" />
-            ) : (
-              <Moon className="size-4" aria-hidden="true" />
-            )}
-          </Button>
-        </div>
-      </header>
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1520px] flex-col px-4 pb-4 pt-20 sm:px-6 lg:px-8">
-        <section className="grid flex-1 gap-4 py-4 xl:grid-cols-[280px_minmax(0,1fr)_340px]">
-          <aside className="flex flex-col gap-4 xl:sticky xl:top-20 xl:self-start">
-            <section className="planner-panel planner-animate px-3 py-3">
-              <nav aria-label="任务视图" className="flex flex-col gap-1">
+        </header>
+
+        <section className="grid flex-1 gap-5 py-5 xl:grid-cols-[300px_minmax(0,1fr)_360px]">
+          <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+            <section className="planner-panel planner-animate planner-delay-1 p-3">
+              <nav aria-label="任务视图" className="space-y-1">
                 <ViewButton
                   active={view === "today"}
                   count={todayTasks.length}
@@ -286,17 +327,6 @@ function App() {
               </nav>
             </section>
 
-            <section className="planner-panel planner-animate planner-delay-1 px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                概览
-              </p>
-              <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
-                <MetricTile label="今日" value={todayTasks.length} />
-                <MetricTile label="收件箱" value={inboxTasks.length} />
-                <MetricTile label="已完成" value={doneTasks.length} />
-              </dl>
-            </section>
-
             <TagSidebarSection
               availableTags={availableTags}
               baseTaskCount={baseTasks.length}
@@ -307,18 +337,13 @@ function App() {
           </aside>
 
           <section className="planner-panel planner-animate planner-delay-2 overflow-hidden">
-            <div className="border-b border-border/70 px-5 py-5 sm:px-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="border-b border-border/70 px-5 py-6 sm:px-7">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                 <div className="max-w-2xl">
-                  <div className="flex flex-wrap gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                    <span className="border border-border/80 bg-background/75 px-2.5 py-1">
-                      Today {todayKey}
-                    </span>
-                    <span className="border border-border/80 bg-background/75 px-2.5 py-1">
-                      {viewCopy[view].title}
-                    </span>
-                  </div>
-                  <h2 className="font-display mt-4 text-3xl tracking-[-0.06em] sm:text-[2.5rem]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground">
+                    Workspace
+                  </p>
+                  <h2 className="font-display mt-3 text-3xl tracking-[-0.05em] sm:text-[2.5rem]">
                     {viewCopy[view].title}
                   </h2>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -327,56 +352,55 @@ function App() {
                       : viewCopy[view].description}
                   </p>
                 </div>
-                <div className="flex items-center gap-3 self-start border border-border/80 bg-background/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                <div className="flex items-center gap-3 self-start rounded-full border border-border/80 bg-background/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
                   <span className="text-foreground">{visibleTasks.length}</span>
                   <span>Visible items</span>
                 </div>
               </div>
             </div>
 
-            <form className="border-b border-border/70 px-5 py-5 sm:px-6" onSubmit={addTodayTask}>
-              <div className="border border-border/80 bg-background/78 p-4 shadow-[0_16px_48px_rgba(15,23,42,0.04)] backdrop-blur-md sm:p-5">
-                <div>
-                  <label className="sr-only" htmlFor="new-task-title">
-                    待办标题
-                  </label>
-                  <Input
-                    id="new-task-title"
-                    className="h-12 border-0 bg-transparent px-0 text-base shadow-none placeholder:text-muted-foreground/80 focus-visible:ring-0"
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    placeholder="添加今日待办，用 #标签 标记分类"
-                  />
-                </div>
-
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <PrioritySelect
-                      ariaLabel="优先级"
-                      className="h-10 min-w-[10rem] border-border/70 bg-card/75"
-                      onChange={setDraftPriority}
-                      value={draftPriority}
+            <form className="border-b border-border/70 px-5 py-5 sm:px-7" onSubmit={addTodayTask}>
+              <div className="rounded-[2rem] border border-border/80 bg-background/75 p-4 shadow-[0_16px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl sm:p-5">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+                  <div className="min-w-0 flex-1">
+                    <label className="sr-only" htmlFor="new-task-title">
+                      待办标题
+                    </label>
+                    <Input
+                      id="new-task-title"
+                      className="h-12 rounded-[1rem] border-0 bg-transparent px-0 text-base shadow-none placeholder:text-muted-foreground/80 focus-visible:ring-0"
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      placeholder="添加今日待办，用 #标签 标记分类"
                     />
-                    <div className="flex h-10 min-w-[9rem] items-center gap-2 border border-border/70 bg-card/75 px-3">
-                      <label className="sr-only" htmlFor="new-task-time">
-                        当天时间
-                      </label>
-                      <Clock3
-                        className="size-4 text-muted-foreground"
-                        aria-hidden="true"
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <PrioritySelect
+                        ariaLabel="优先级"
+                        className="h-10 w-full border-border/70 bg-card/65 sm:w-40"
+                        onChange={setDraftPriority}
+                        value={draftPriority}
                       />
-                      <Input
-                        id="new-task-time"
-                        className="h-auto w-full border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
-                        type="time"
-                        value={timeDraft}
-                        onChange={(event) => setTimeDraft(event.target.value)}
-                      />
+                      <div className="flex h-10 w-full items-center gap-2 rounded-full border border-border/70 bg-card/65 px-3 sm:w-36">
+                        <label className="sr-only" htmlFor="new-task-time">
+                          当天时间
+                        </label>
+                        <Clock3
+                          className="size-4 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <Input
+                          id="new-task-time"
+                          className="h-auto border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
+                          type="time"
+                          value={timeDraft}
+                          onChange={(event) => setTimeDraft(event.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
                   <Button
                     aria-label="添加今日待办"
-                    className="h-10 bg-foreground px-5 text-background hover:bg-foreground/90"
+                    className="h-12 rounded-[1rem] bg-foreground px-5 text-background hover:bg-foreground/90"
                     type="submit"
                   >
                     <Plus className="size-4" aria-hidden="true" />
@@ -385,7 +409,7 @@ function App() {
                 </div>
               </div>
               <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                标题里写 #标签；时间和优先级收在下方，备注放到详情里再补。
+                标题里写 #标签；备注留到右侧详情里补充。
               </p>
             </form>
 
@@ -401,7 +425,6 @@ function App() {
                     onDelete={deleteTask}
                     onMoveToToday={moveToToday}
                     onOpenDetails={setSelectedTaskId}
-                    onSave={saveTaskEdits}
                   />
                 ))}
               </ul>
@@ -410,15 +433,15 @@ function App() {
             )}
           </section>
 
-            <TaskDetailPanel
-              task={selectedTask}
-              onClearSelection={() => setSelectedTaskId(null)}
-              onComplete={completeTask}
-              onDelete={deleteTask}
-              onMoveToToday={moveToToday}
-              onSave={saveTaskEdits}
-            />
-          </section>
+          <TaskDetailPanel
+            task={selectedTask}
+            onClearSelection={() => setSelectedTaskId(null)}
+            onComplete={completeTask}
+            onDelete={deleteTask}
+            onMoveToToday={moveToToday}
+            onSave={saveTaskEdits}
+          />
+        </section>
       </div>
     </main>
   );
@@ -426,13 +449,13 @@ function App() {
 
 function MetricTile({ label, value }: { label: string; value: number }) {
   return (
-    <div className="border border-border/80 bg-background/80 px-3 py-3 text-left">
-      <dt className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+    <div className="rounded-[1.5rem] border border-border/80 bg-background/80 px-4 py-3 text-left backdrop-blur-xl">
+      <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
         {label}
-      </dt>
-      <dd className="mt-2 text-3xl font-semibold leading-none tracking-[-0.06em] text-foreground">
+      </p>
+      <p className="mt-3 text-3xl font-semibold leading-none tracking-[-0.06em] text-foreground">
         {value}
-      </dd>
+      </p>
     </div>
   );
 }
@@ -455,7 +478,7 @@ function TagSidebarSection({
   return (
     <section
       aria-label="标签筛选"
-      className="planner-panel planner-animate planner-delay-2 px-4 py-4"
+      className="planner-panel planner-animate planner-delay-2 p-5"
     >
       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
         <Tags className="size-4 text-foreground" aria-hidden="true" />
@@ -506,7 +529,7 @@ function ViewButton({
   return (
     <button
       className={cn(
-        "group flex w-full items-center justify-between px-4 py-3 text-left transition-all duration-200",
+        "group flex w-full items-center justify-between rounded-[1.4rem] px-4 py-3.5 text-left transition-all duration-200",
         active
           ? "bg-foreground text-background shadow-[0_22px_50px_rgba(15,23,42,0.12)]"
           : "text-muted-foreground hover:bg-background/80 hover:text-foreground",
@@ -517,7 +540,7 @@ function ViewButton({
       <span className="flex min-w-0 items-start gap-3">
         <span
           className={cn(
-            "mt-0.5 flex size-9 shrink-0 items-center justify-center border transition-colors",
+            "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors",
             active
               ? "border-white/15 bg-white/10"
               : "border-border/70 bg-background/70 text-foreground group-hover:border-foreground/20",
@@ -566,7 +589,7 @@ function TagFilterButton({
     <button
       aria-pressed={active}
       className={cn(
-        "inline-flex h-10 items-center gap-2 border px-4 text-sm transition-all duration-200",
+        "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm transition-all duration-200",
         active
           ? "border-foreground bg-foreground text-background shadow-[0_10px_26px_rgba(15,23,42,0.12)]"
           : "border-border/80 bg-background/70 text-muted-foreground hover:border-foreground/25 hover:text-foreground",
@@ -590,143 +613,10 @@ type TaskRowProps = {
   onDelete: (taskId: string) => void;
   onMoveToToday: (taskId: string) => void;
   onOpenDetails: (taskId: string) => void;
-  onSave: (
-    taskId: string,
-    updates: {
-      title: string;
-      details: string;
-      priority: TaskPriority;
-      scheduledFor: string;
-      scheduledTime: string;
-    },
-  ) => void;
 };
 
 function formatTaskTitleDraft(task: Task): string {
   return [task.title, ...task.tags.map((tag) => `#${tag}`)].join(" ").trim();
-}
-
-type TaskEditorDraft = {
-  title: string;
-  details: string;
-  priority: TaskPriority;
-  scheduledFor: string;
-  scheduledTime: string;
-};
-
-function createTaskEditorDraft(task: Task): TaskEditorDraft {
-  return {
-    title: formatTaskTitleDraft(task),
-    details: task.details ?? "",
-    priority: task.priority,
-    scheduledFor: task.scheduledFor,
-    scheduledTime: task.scheduledTime ?? "",
-  };
-}
-
-type TaskEditorFieldsProps = {
-  details: string;
-  detailsClassName?: string;
-  detailsPlaceholder?: string;
-  idPrefix: string;
-  metaGridClassName?: string;
-  onDetailsChange: (value: string) => void;
-  onPriorityChange: (priority: TaskPriority) => void;
-  onScheduledForChange: (value: string) => void;
-  onScheduledTimeChange: (value: string) => void;
-  onTitleChange: (value: string) => void;
-  priority: TaskPriority;
-  scheduledFor: string;
-  scheduledTime: string;
-  title: string;
-  titleClassName?: string;
-  titlePlaceholder?: string;
-};
-
-function TaskEditorFields({
-  details,
-  detailsClassName,
-  detailsPlaceholder = "补充备注、背景或验收标准（可选）",
-  idPrefix,
-  metaGridClassName,
-  onDetailsChange,
-  onPriorityChange,
-  onScheduledForChange,
-  onScheduledTimeChange,
-  onTitleChange,
-  priority,
-  scheduledFor,
-  scheduledTime,
-  title,
-  titleClassName,
-  titlePlaceholder = "标题里直接写 #标签",
-}: TaskEditorFieldsProps) {
-  return (
-    <div className="flex flex-col gap-3">
-      <div>
-        <label className="sr-only" htmlFor={`${idPrefix}-title`}>
-          待办标题
-        </label>
-        <Input
-          id={`${idPrefix}-title`}
-          className={cn("border-border/70 bg-card/70", titleClassName)}
-          value={title}
-          onChange={(event) => onTitleChange(event.target.value)}
-          placeholder={titlePlaceholder}
-        />
-      </div>
-      <div
-        className={cn(
-          "grid gap-3 xl:grid-cols-[11rem_9rem_minmax(0,1fr)]",
-          metaGridClassName,
-        )}
-      >
-        <PrioritySelect
-          ariaLabel="优先级"
-          className="border-border/70 bg-card/70"
-          onChange={onPriorityChange}
-          value={priority}
-        />
-        <div className="flex items-center gap-2 border border-border/70 bg-card/70 px-3">
-          <label className="sr-only" htmlFor={`${idPrefix}-time`}>
-            当天时间
-          </label>
-          <Clock3 className="size-4 text-muted-foreground" aria-hidden="true" />
-          <Input
-            id={`${idPrefix}-time`}
-            className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-            type="time"
-            value={scheduledTime}
-            onChange={(event) => onScheduledTimeChange(event.target.value)}
-          />
-        </div>
-        <div>
-          <label className="sr-only" htmlFor={`${idPrefix}-scheduled-for`}>
-            归属日期
-          </label>
-          <Input
-            id={`${idPrefix}-scheduled-for`}
-            className="border-border/70 bg-card/70"
-            type="date"
-            value={scheduledFor}
-            onChange={(event) => onScheduledForChange(event.target.value)}
-          />
-        </div>
-      </div>
-      <div>
-        <label className="sr-only" htmlFor={`${idPrefix}-details`}>
-          待办详情
-        </label>
-        <Textarea
-          id={`${idPrefix}-details`}
-          className={cn("min-h-24 border-border/70 bg-card/70", detailsClassName)}
-          value={details}
-          onChange={(event) => onDetailsChange(event.target.value)}
-          placeholder={detailsPlaceholder}
-        />
-      </div>
-    </div>
-  );
 }
 
 function TaskRow({
@@ -737,69 +627,7 @@ function TaskRow({
   onDelete,
   onMoveToToday,
   onOpenDetails,
-  onSave,
 }: TaskRowProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(() => createTaskEditorDraft(task).title);
-  const [detailsDraft, setDetailsDraft] = useState(
-    () => createTaskEditorDraft(task).details,
-  );
-  const [priorityDraft, setPriorityDraft] = useState(
-    () => createTaskEditorDraft(task).priority,
-  );
-  const [scheduledForDraft, setScheduledForDraft] = useState(
-    () => createTaskEditorDraft(task).scheduledFor,
-  );
-  const [scheduledTimeDraft, setScheduledTimeDraft] = useState(
-    () => createTaskEditorDraft(task).scheduledTime,
-  );
-  const parsedTitleDraft = parseTaskDraft(titleDraft);
-
-  function syncDraftsFromTask() {
-    const nextDraft = createTaskEditorDraft(task);
-
-    setTitleDraft(nextDraft.title);
-    setDetailsDraft(nextDraft.details);
-    setPriorityDraft(nextDraft.priority);
-    setScheduledForDraft(nextDraft.scheduledFor);
-    setScheduledTimeDraft(nextDraft.scheduledTime);
-  }
-
-  useEffect(() => {
-    if (isEditing) {
-      return;
-    }
-
-    syncDraftsFromTask();
-  }, [isEditing, task]);
-
-  function startEditing() {
-    syncDraftsFromTask();
-    setIsEditing(true);
-  }
-
-  function cancelEditing() {
-    syncDraftsFromTask();
-    setIsEditing(false);
-  }
-
-  function submitEdits(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!parsedTitleDraft.title) {
-      return;
-    }
-
-    onSave(task.id, {
-      title: titleDraft,
-      details: detailsDraft,
-      priority: priorityDraft,
-      scheduledFor: scheduledForDraft,
-      scheduledTime: scheduledTimeDraft,
-    });
-    setIsEditing(false);
-  }
-
   return (
     <li
       className={cn(
@@ -810,8 +638,8 @@ function TaskRow({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <button
           aria-label={`完成 ${task.title}`}
-          className="flex size-11 shrink-0 items-center justify-center border border-border/70 bg-background/80 text-muted-foreground transition-all duration-200 hover:border-foreground hover:text-foreground disabled:hover:border-border/70 disabled:hover:text-muted-foreground"
-          disabled={task.status === "done" || isEditing}
+          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/80 text-muted-foreground transition-all duration-200 hover:border-foreground hover:text-foreground disabled:hover:border-border/70 disabled:hover:text-muted-foreground"
+          disabled={task.status === "done"}
           onClick={() => onComplete(task.id)}
           type="button"
         >
@@ -823,145 +651,91 @@ function TaskRow({
         </button>
 
         <div className="min-w-0 flex-1">
-          {isEditing ? (
-            <form
-              className="border border-border/80 bg-background/70 p-4 shadow-[0_16px_40px_rgba(15,23,42,0.05)] sm:p-5"
-              onSubmit={submitEdits}
-            >
-              <TaskEditorFields
-                details={detailsDraft}
-                idPrefix={`task-${task.id}`}
-                onDetailsChange={setDetailsDraft}
-                onPriorityChange={setPriorityDraft}
-                onScheduledForChange={setScheduledForDraft}
-                onScheduledTimeChange={setScheduledTimeDraft}
-                onTitleChange={setTitleDraft}
-                priority={priorityDraft}
-                scheduledFor={scheduledForDraft}
-                scheduledTime={scheduledTimeDraft}
-                title={titleDraft}
-              />
-              <p className="mt-3 text-xs text-muted-foreground">
-                #标签会跟随标题保存
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  className="bg-foreground text-background hover:bg-foreground/90"
-                  disabled={!parsedTitleDraft.title}
-                  size="sm"
-                  type="submit"
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <button
+                aria-label={`查看 ${task.title} 详情`}
+                className="w-full rounded-[1.25rem] p-1 text-left transition-colors hover:bg-background/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => onOpenDetails(task.id)}
+                type="button"
+              >
+                <p
+                  className={cn(
+                    "break-words text-[1.2rem] font-medium leading-tight tracking-[-0.04em] sm:text-[1.35rem]",
+                    task.status === "done" && "text-muted-foreground line-through",
+                  )}
                 >
-                  <Save className="size-4" aria-hidden="true" />
-                  保存
-                </Button>
+                  {task.title}
+                </p>
+                {task.details ? (
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground sm:text-[0.95rem]">
+                    {task.details}
+                  </p>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    右侧详情里直接编辑时间、标签和备注
+                  </p>
+                )}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <PriorityBadge priority={task.priority} />
+              {task.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-border/70 bg-background/75 px-3 py-1 text-xs font-medium text-muted-foreground"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <PrioritySelect
+                ariaLabel={`设置 ${task.title} 的优先级`}
+                className="w-full rounded-full border-border/70 bg-card/70 sm:w-36"
+                onChange={(priority) => onChangePriority(task.id, priority)}
+                value={task.priority}
+              />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                <span>归属日期 {task.scheduledFor}</span>
+                {task.scheduledTime ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock3 className="size-3.5" aria-hidden="true" />
+                    {task.scheduledTime}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {task.status !== "today" ? (
                 <Button
-                  onClick={cancelEditing}
+                  className="rounded-full border-border/80 bg-background/70"
+                  onClick={() => onMoveToToday(task.id)}
                   size="sm"
                   type="button"
                   variant="outline"
                 >
-                  <X className="size-4" aria-hidden="true" />
-                  取消
+                  <RotateCcw className="size-4" aria-hidden="true" />
+                  今天
                 </Button>
-              </div>
-            </form>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <button
-                    aria-label={`查看 ${task.title} 详情`}
-                    className="w-full p-1 text-left transition-colors hover:bg-background/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => onOpenDetails(task.id)}
-                    type="button"
-                  >
-                    <p
-                      className={cn(
-                        "break-words text-[1.2rem] font-medium leading-tight tracking-[-0.04em] sm:text-[1.35rem]",
-                        task.status === "done" && "text-muted-foreground line-through",
-                      )}
-                    >
-                      {task.title}
-                    </p>
-                    {task.details ? (
-                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground sm:text-[0.95rem]">
-                        {task.details}
-                      </p>
-                    ) : (
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        查看时间、标签和备注详情
-                      </p>
-                    )}
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <PriorityBadge priority={task.priority} />
-                  {task.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="border border-border/70 bg-background/75 px-3 py-1 text-xs font-medium text-muted-foreground"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                  <PrioritySelect
-                    ariaLabel={`设置 ${task.title} 的优先级`}
-                    className="w-full border-border/70 bg-card/70 sm:w-36"
-                    onChange={(priority) => onChangePriority(task.id, priority)}
-                    value={task.priority}
-                  />
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    <span>归属日期 {task.scheduledFor}</span>
-                    {task.scheduledTime ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Clock3 className="size-3.5" aria-hidden="true" />
-                        {task.scheduledTime}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {task.status !== "today" ? (
-                    <Button
-                      className="border-border/80 bg-background/70"
-                      onClick={() => onMoveToToday(task.id)}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      <RotateCcw className="size-4" aria-hidden="true" />
-                      今天
-                    </Button>
-                  ) : null}
-                  <Button
-                    aria-label={`编辑 ${task.title}`}
-                    onClick={startEditing}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    编辑
-                  </Button>
-                  <Button
-                    aria-label={`删除 ${task.title}`}
-                    onClick={() => onDelete(task.id)}
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
+              ) : null}
+              <Button
+                aria-label={`删除 ${task.title}`}
+                className="rounded-full"
+                onClick={() => onDelete(task.id)}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </li>
@@ -984,7 +758,7 @@ function PrioritySelect({
   return (
     <div
       className={cn(
-        "relative flex h-10 items-center border border-input bg-card/80",
+        "relative flex h-10 items-center rounded-full border border-input bg-card/80",
         className,
       )}
     >
@@ -994,7 +768,7 @@ function PrioritySelect({
       />
       <select
         aria-label={ariaLabel}
-        className="h-full w-full appearance-none bg-transparent pl-9 pr-8 text-sm text-foreground outline-none"
+        className="h-full w-full appearance-none rounded-full bg-transparent pl-9 pr-8 text-sm text-foreground outline-none"
         onChange={(event) => onChange(event.target.value as TaskPriority)}
         value={value}
       >
@@ -1017,7 +791,7 @@ function PriorityBadge({ priority }: { priority: TaskPriority }) {
   return (
     <span
       className={cn(
-        "px-3 py-1 text-xs font-medium",
+        "rounded-full px-3 py-1 text-xs font-medium",
         priorityBadgeClassNames[priority],
       )}
     >
@@ -1059,8 +833,8 @@ function TaskDetailPanel({
   const [scheduledTimeDraft, setScheduledTimeDraft] = useState("");
   const parsedTitleDraft = parseTaskDraft(titleDraft);
 
-  function syncDraftsFromTask(nextTask: Task | null) {
-    if (!nextTask) {
+  useEffect(() => {
+    if (!task) {
       setTitleDraft("");
       setDetailsDraft("");
       setPriorityDraft("medium");
@@ -1069,17 +843,11 @@ function TaskDetailPanel({
       return;
     }
 
-    const nextDraft = createTaskEditorDraft(nextTask);
-
-    setTitleDraft(nextDraft.title);
-    setDetailsDraft(nextDraft.details);
-    setPriorityDraft(nextDraft.priority);
-    setScheduledForDraft(nextDraft.scheduledFor);
-    setScheduledTimeDraft(nextDraft.scheduledTime);
-  }
-
-  useEffect(() => {
-    syncDraftsFromTask(task);
+    setTitleDraft(formatTaskTitleDraft(task));
+    setDetailsDraft(task.details ?? "");
+    setPriorityDraft(task.priority);
+    setScheduledForDraft(task.scheduledFor);
+    setScheduledTimeDraft(task.scheduledTime ?? "");
   }, [task]);
 
   function submitEdits(event: FormEvent<HTMLFormElement>) {
@@ -1101,22 +869,33 @@ function TaskDetailPanel({
   return (
     <aside
       aria-label="任务详情侧栏"
-      className="planner-panel planner-animate planner-delay-2 overflow-hidden xl:sticky xl:top-20 xl:self-start"
+      className="planner-panel planner-animate planner-delay-2 overflow-hidden xl:sticky xl:top-4 xl:self-start"
     >
       {task ? (
         <form className="flex h-full flex-col" onSubmit={submitEdits}>
           <div className="border-b border-border/70 px-5 py-5">
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                   Detail
                 </p>
+                <label className="sr-only" htmlFor="detail-task-title">
+                  编辑待办标题
+                </label>
+                <Input
+                  id="detail-task-title"
+                  className="font-display mt-3 h-auto border-0 bg-transparent px-0 py-0 text-3xl tracking-[-0.05em] shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                  value={titleDraft}
+                  onChange={(event) => setTitleDraft(event.target.value)}
+                  placeholder="标题里直接写 #标签"
+                />
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  点击任务后，可直接修改标题、标签、时间和备注。
+                  标题点开就能改，#标签会跟随标题一起保存。
                 </p>
               </div>
               <Button
                 aria-label="收起详情"
+                className="rounded-full"
                 onClick={onClearSelection}
                 size="icon"
                 type="button"
@@ -1125,43 +904,90 @@ function TaskDetailPanel({
                 <X className="size-4" aria-hidden="true" />
               </Button>
             </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <PriorityBadge priority={priorityDraft} />
+              {parsedTitleDraft.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-border/70 bg-background/75 px-3 py-1 text-xs font-medium text-muted-foreground"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-1 flex-col gap-5 px-5 py-5">
-            <section className="border border-border/70 bg-background/65 p-4">
-              <TaskEditorFields
-                details={detailsDraft}
-                detailsClassName="min-h-32"
-                idPrefix={`task-detail-${task.id}`}
-                metaGridClassName="sm:grid-cols-2 xl:grid-cols-1"
-                onDetailsChange={setDetailsDraft}
-                onPriorityChange={setPriorityDraft}
-                onScheduledForChange={setScheduledForDraft}
-                onScheduledTimeChange={setScheduledTimeDraft}
-                onTitleChange={setTitleDraft}
-                priority={priorityDraft}
-                scheduledFor={scheduledForDraft}
-                scheduledTime={scheduledTimeDraft}
-                title={titleDraft}
-                titleClassName="h-auto border-0 bg-transparent px-0 text-3xl font-display tracking-[-0.05em] shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-0"
-              />
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <PriorityBadge priority={priorityDraft} />
-                {parsedTitleDraft.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="border border-border/70 bg-background/75 px-3 py-1 text-xs font-medium text-muted-foreground"
-                  >
-                    #{tag}
-                  </span>
-                ))}
+            <section className="rounded-[1.5rem] border border-border/70 bg-background/65 p-4">
+              <div className="grid gap-3">
+                <PrioritySelect
+                  ariaLabel="详情优先级"
+                  className="w-full border-border/70 bg-card/70"
+                  onChange={setPriorityDraft}
+                  value={priorityDraft}
+                />
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="flex h-10 items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3">
+                    <CalendarDays
+                      className="size-4 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <label className="sr-only" htmlFor="detail-task-date">
+                      归属日期
+                    </label>
+                    <Input
+                      id="detail-task-date"
+                      className="h-auto border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
+                      type="date"
+                      value={scheduledForDraft}
+                      onChange={(event) => setScheduledForDraft(event.target.value)}
+                    />
+                  </div>
+                  <div className="flex h-10 items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3">
+                    <Clock3 className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <label className="sr-only" htmlFor="detail-task-time">
+                      当天时间
+                    </label>
+                    <Input
+                      id="detail-task-time"
+                      className="h-auto border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
+                      type="time"
+                      value={scheduledTimeDraft}
+                      onChange={(event) => setScheduledTimeDraft(event.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
-              <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                标题里继续写 #标签，保存后会自动整理。
+            </section>
+
+            <section className="rounded-[1.5rem] border border-border/70 bg-background/65 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                备注
               </p>
+              <label className="sr-only" htmlFor="detail-task-details">
+                待办详情
+              </label>
+              <Textarea
+                id="detail-task-details"
+                className="mt-3 min-h-28 rounded-[1rem] border-border/70 bg-card/70"
+                value={detailsDraft}
+                onChange={(event) => setDetailsDraft(event.target.value)}
+                placeholder="补充备注、背景或验收标准（可选）"
+              />
             </section>
 
             <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <DetailMetric
+                icon={<CalendarDays className="size-4" aria-hidden="true" />}
+                label="归属日期"
+                value={formatScheduledDate(scheduledForDraft)}
+              />
+              <DetailMetric
+                icon={<Clock3 className="size-4" aria-hidden="true" />}
+                label="当天时间"
+                value={scheduledTimeDraft || "暂未安排"}
+              />
               <DetailMetric
                 icon={<ListChecks className="size-4" aria-hidden="true" />}
                 label="状态"
@@ -1174,40 +1000,23 @@ function TaskDetailPanel({
               />
             </section>
 
-            <section className="border border-border/70 bg-background/65 p-4">
+            <section className="rounded-[1.5rem] border border-border/70 bg-background/65 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                保存修改
+                保存与操作
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
-                  className="bg-foreground text-background hover:bg-foreground/90"
+                  className="rounded-full bg-foreground text-background hover:bg-foreground/90"
                   disabled={!parsedTitleDraft.title}
                   size="sm"
                   type="submit"
                 >
                   <Save className="size-4" aria-hidden="true" />
-                  保存
+                  保存修改
                 </Button>
-                <Button
-                  onClick={() => syncDraftsFromTask(task)}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <RotateCcw className="size-4" aria-hidden="true" />
-                  重置
-                </Button>
-              </div>
-            </section>
-
-            <section className="border border-border/70 bg-background/65 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                任务操作
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
                 {task.status !== "done" ? (
                   <Button
-                    className="bg-foreground text-background hover:bg-foreground/90"
+                    className="rounded-full bg-foreground text-background hover:bg-foreground/90"
                     onClick={() => onComplete(task.id)}
                     size="sm"
                     type="button"
@@ -1218,7 +1027,7 @@ function TaskDetailPanel({
                 ) : null}
                 {task.status !== "today" ? (
                   <Button
-                    className="border-border/80 bg-background/70"
+                    className="rounded-full border-border/80 bg-background/70"
                     onClick={() => onMoveToToday(task.id)}
                     size="sm"
                     type="button"
@@ -1229,6 +1038,7 @@ function TaskDetailPanel({
                   </Button>
                 ) : null}
                 <Button
+                  className="rounded-full"
                   onClick={() => onDelete(task.id)}
                   size="sm"
                   type="button"
@@ -1244,7 +1054,7 @@ function TaskDetailPanel({
       ) : (
         <div className="flex min-h-[320px] items-center justify-center px-6 py-10 text-center">
           <div className="max-w-xs">
-            <div className="mx-auto flex size-14 items-center justify-center border border-border/70 bg-background/75 text-foreground">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-border/70 bg-background/75 text-foreground">
               <ListChecks className="size-5" aria-hidden="true" />
             </div>
             <h3 className="font-display mt-5 text-2xl tracking-[-0.04em]">
@@ -1270,7 +1080,7 @@ function DetailMetric({
   value: string;
 }) {
   return (
-    <div className="border border-border/70 bg-background/65 p-4">
+    <div className="rounded-[1.5rem] border border-border/70 bg-background/65 p-4">
       <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
         {icon}
         <span>{label}</span>
@@ -1328,7 +1138,7 @@ function EmptyState({ view }: { view: View }) {
   return (
     <div className="flex min-h-[460px] items-center justify-center px-6 py-12 text-center">
       <div className="max-w-sm">
-        <div className="mx-auto flex size-16 items-center justify-center border border-border/70 bg-background/75 text-foreground">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-border/70 bg-background/75 text-foreground">
           <Inbox className="size-6" aria-hidden="true" />
         </div>
         <p className="font-display mt-5 text-2xl">{copy}</p>
