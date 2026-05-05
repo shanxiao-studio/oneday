@@ -121,7 +121,9 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /收件箱/ }));
     expect(screen.getByText("补昨天的记录")).toBeTruthy();
 
-    await user.click(screen.getByRole("button", { name: "今天做" }));
+    await user.click(
+      screen.getByRole("button", { name: "将 补昨天的记录 移到今天" }),
+    );
 
     expect(screen.getByRole("heading", { name: "今日" })).toBeTruthy();
     expect(screen.getByText("补昨天的记录")).toBeTruthy();
@@ -193,9 +195,9 @@ describe("App", () => {
     expect(within(updatedTask!).getByText("补充阻塞项")).toBeTruthy();
     expect(within(updatedTask!).getByText("#复盘")).toBeTruthy();
     expect(screen.queryByText("#工作")).toBeNull();
-    expect(within(updatedTask!).getByText(`归属 ${updatedScheduledFor}`)).toBeTruthy();
     expect(within(updatedTask!).getByText("16:45")).toBeTruthy();
     expect(within(detailPanel).getByText("高优先级")).toBeTruthy();
+    expect(within(detailPanel).getByDisplayValue(updatedScheduledFor)).toBeTruthy();
 
     const tagRegion = screen.getByRole("region", { name: "标签筛选" });
     await user.click(within(tagRegion).getByRole("button", { name: /#复盘/i }));
@@ -211,10 +213,10 @@ describe("App", () => {
     await user.type(screen.getByLabelText("待办标题"), "准备删除的任务");
     await user.click(screen.getByRole("button", { name: "添加今日待办" }));
 
-    expect(screen.queryByRole("button", { name: "删除 准备删除的任务" })).toBeNull();
-
     const detailPanel = screen.getByLabelText("任务详情侧栏");
-    await user.click(within(detailPanel).getByRole("button", { name: "删除" }));
+    await user.click(
+      within(detailPanel).getByRole("button", { name: "删除 准备删除的任务" }),
+    );
 
     expect(screen.queryByText("准备删除的任务")).toBeNull();
     expect(screen.getByText("选中一个 TODO")).toBeTruthy();
